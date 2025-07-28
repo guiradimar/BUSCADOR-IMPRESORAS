@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buscador de Consumibles e Impresoras</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-bottom: 1rem;
+    }
+    .result {
+      padding: 1rem;
+      border-left: 5px solid #007BFF;
+      background: #eef5ff;
+      margin-bottom: 1rem;
+      border-radius: 5px;
+    }
+    .result h3 {
+      margin-top: 0;
+    }
+    .brand-icon {
+      width: 40px;
+      height: auto;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Buscador de Compatibilidades</h1>
+    <input type="text" id="search" placeholder="Escribe un cartucho o impresora..." list="suggestions">
+    <datalist id="suggestions"></datalist>
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const dataURL = "https://guiradimar.github.io/BUSCADOR-IMPRESORAS/compatibilidades_cartuchos.json";
+    let dataset = [];
+    let referencias = new Set();
+    let impresoras = new Set();
+
+    async function loadData() {
+      const res = await fetch(dataURL);
+      dataset = await res.json();
+
+      dataset.forEach(item => {
+        referencias.add(item.referencia.toLowerCase());
+        item.compatibles.forEach(modelo => impresoras.add(modelo.toLowerCase()));
+      });
+    }
+
+    function actualizarSugerencias(valor) {
+      const datalist = document.getElementById("suggestions");
+      datalist.innerHTML = "";
+
+      const valorMinuscula = valor.toLowerCase();
+      const sugerencias = [...referencias, ...impresoras].filter(entry =>
+        entry.includes(valorMinuscula)
+      );
+
+      sugerencias.slice(0, 10).forEach(entry => {
+        const option = document.createElement("option");
+        option.value = entry;
+        datalist.appendChild(option);
+      });
+    }
+
+    function getBrandIcon(marca) {
+      const path = `https://guiradimar.github.io/BUSCADOR-IMPRESORAS/img/logos/${marca.toLowerCase()}.png`;
+      return `<img src="${path}" alt="${marca}" class="brand-icon">`;
+    }
+
+    function mostrarResultados(entrada) {
+      const value = entrada.toLowerCase();
+      const contenedor = document.getElementById("results");
+      contenedor.innerHTML = "";
+
+      let encontrados = false;
+
+      dataset.forEach(item => {
+        if (
+          item.referencia.toLowerCase().includes(value) ||
+          item.compatibles.some(m => m.toLowerCase().includes(value))
+        ) {
+          const icono = getBrandIcon(item.marca);
+          const compats = item.compatibles.map(c => `<li>${c}</li>`).join("");
+          contenedor.innerHTML += `
+            <div class="result">
+              <h3>${icono}${item.referencia} (${item.marca})</h3>
+              <p><strong>Descripción:</strong> ${item.descripcion}</p>
+              <p><strong>Compatibilidades:</strong></p>
+              <ul>${compats}</ul>
+            </div>
+          `;
+          encontrados = true;
+        }
+      });
+
+      if (!encontrados) {
+        contenedor.innerHTML = "<p>No se encontraron resultados.</p>";
+      }
+    }
+
+    document.getElementById("search").addEventListener("change", e => {
+      mostrarResultados(e.target.value);
+    });
+
+    document.getElementById("search").addEventListener("input", e => {
+      actualizarSugerencias(e.target.value);
+    });
+
+    loadData();
+  </script>
+</body>
+</html>
