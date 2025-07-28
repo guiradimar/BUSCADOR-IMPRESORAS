@@ -108,8 +108,12 @@
         }
       });
 
-      if (!encontrados) {
-        contenedor.innerHTML = "<p>No se encontraron resultados.</p>";
+      if (
+  item.referencia.toLowerCase().includes(value) ||
+  item.marca.toLowerCase().includes(value) ||
+  item.compatibles.some(m => m.toLowerCase().includes(value))
+) {
+
       }
     }
 
