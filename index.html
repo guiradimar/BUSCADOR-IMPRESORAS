@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Buscador Consumibles/Impresoras</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    h1 {
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      color: #0a3d62;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+    #search-container {
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    input[type="search"] {
+      width: 100%;
+      padding: 12px 20px;
+      font-size: 1.2rem;
+      border-radius: 25px;
+      border: 2px solid #0984e3;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+    input[type="search"]:focus {
+      border-color: #74b9ff;
+      box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+    }
+    #results-container {
+      display: flex;
+      gap: 20px;
+      width: 100%;
+      max-width: 900px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .result-box {
+      flex: 1 1 400px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      padding: 15px;
+      box-sizing: border-box;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+    }
+    .result-box h2 {
+      text-transform: uppercase;
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-weight: 700;
+      color: #d63031;
+      border-bottom: 3px solid #d63031;
+      padding-bottom: 5px;
+    }
+    .result-box.consumibles h2 {
+      color: #00b894;
+      border-color: #00b894;
+    }
+    .result-item {
+      padding: 10px 8px;
+      border-bottom: 1px solid #eee;
+      cursor: default;
+      transition: background-color 0.2s;
+      font-size: 0.95rem;
+    }
+    .result-item:hover {
+      background-color: #dfe6e9;
+    }
+    .result-item strong {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    #google-search-btn {
+      margin-top: 20px;
+      display: none;
+      padding: 12px 24px;
+      background-color: #0984e3;
+      color: white;
+      border: none;
+      border-radius: 30px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 5px 12px rgba(9, 132, 227, 0.5);
+      transition: background-color 0.3s ease;
+      user-select: none;
+    }
+    #google-search-btn:hover {
+      background-color: #74b9ff;
+    }
+    @media (max-width: 768px) {
+      #results-container {
+        flex-direction: column;
+      }
+      .result-box {
+        flex-basis: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>BUSCADOR CONSUMIBLES/IMPRESORAS</h1>
+
+  <div id="search-container">
+    <input
+      type="search"
+      id="search-input"
+      placeholder="Busca por marca, referencia, nombre, descripción, capacidad o compatibilidad..."
+      autocomplete="off"
+      aria-label="Barra de búsqueda"
+      list="autocomplete-list"
+    />
+    <datalist id="autocomplete-list"></datalist>
+  </div>
+
+  <div id="results-container">
+    <div class="result-box consumibles">
+      <h2>CONSUMIBLES</h2>
+      <div id="consumibles-results"></div>
+    </div>
+    <div class="result-box impresoras">
+      <h2>IMPRESORAS</h2>
+      <div id="impresoras-results"></div>
+    </div>
+  </div>
+
+  <button id="google-search-btn" type="button" aria-label="Buscar en Google">Buscar en Google</button>
+
+  <script>
+    function normalizar(texto) {
+      return texto.toLowerCase().replace(/\s+/g, '');
+    }
+
+    const searchInput = document.getElementById('search-input');
+    const autocompleteList = document.getElementById('autocomplete-list');
+    const consumiblesResults = document.getElementById('consumibles-results');
+    const impresorasResults = document.getElementById('impresoras-results');
+    const googleSearchBtn = document.getElementById('google-search-btn');
+
+    let data = [];
+    let autocompleteTerms = new Set();
+
+    async function cargarDatos() {
+      try {
+        const response = await fetch('compatibilidades_busqueda_con_capacidad.json');
+        if (!response.ok) throw new Error('No se pudo cargar el JSON');
+        data = await response.json();
+
+        data.forEach(item => {
+          autocompleteTerms.add(item.marca);
+          autocompleteTerms.add(item.referencia);
+          autocompleteTerms.add(item.nombre);
+          autocompleteTerms.add(item.descripcion);
+          autocompleteTerms.add(item.capacidad);
+          item.compatibilidades.forEach(c => autocompleteTerms.add(c));
+        });
+
+        actualizarAutocomplete();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function actualizarAutocomplete() {
+      autocompleteList.innerHTML = '';
+      Array.from(autocompleteTerms).sort().forEach(term => {
+        if(term) {
+          const option = document.createElement('option');
+          option.value = term;
+          autocompleteList.appendChild(option);
+        }
+      });
+    }
+
+    function buscar(termino) {
+      const termNorm = normalizar(termino);
+      if (!termNorm) {
+        mostrarResultados([], []);
+        return;
+      }
+
+      const consumibles = data.filter(item =>
+        item.tipo === 'consumible' &&
+        [item.marca, item.referencia, item.nombre, item.descripcion, item.capacidad, ...item.compatibilidades].some(campo =>
+          campo && campo.includes(termNorm)
+        )
+      );
+
+      const impresoras = data.filter(item =>
+        item.tipo === 'impresora' &&
+        [item.marca, item.referencia, item.nombre, item.descripcion, item.capacidad, ...item.compatibilidades].some(campo =>
+          campo && campo.includes(termNorm)
+        )
+      );
+
+      mostrarResultados(consumibles, impresoras);
+    }
+
+    function mostrarResultados(consumibles, impresoras) {
+      consumiblesResults.innerHTML = '';
+      impresorasResults.innerHTML = '';
+
+      if(consumibles.length === 0 && impresoras.length === 0) {
+        googleSearchBtn.style.display = 'inline-block';
+      } else {
+        googleSearchBtn.style.display = 'none';
+      }
+
+      if(consumibles.length) {
+        consumibles.forEach(item => {
+          const div = document.createElement('div');
+          div.classList.add('result-item');
+          div.innerHTML = `<strong>${item.nombre.toUpperCase()}</strong>
+                           Marca: ${item.marca.toUpperCase()}<br/>
+                           Ref: ${item.referencia.toUpperCase()}<br/>
+                           Capacidad: ${item.capacidad}<br/>
+                           Precio: ${item.precio}<br/>
+                           Descripción: ${item.descripcion}`;
+          consumiblesResults.appendChild(div);
+        });
+      } else {
+        consumiblesResults.innerHTML = '<p>No hay consumibles que coincidan.</p>';
+      }
+
+      if(impresoras.length) {
+        impresoras.forEach(item => {
+          const div = document.createElement('div');
+          div.classList.add('result-item');
+          div.innerHTML = `<strong>${item.nombre.toUpperCase()}</strong>
+                           Marca: ${item.marca.toUpperCase()}<br/>
+                           Ref: ${item.referencia.toUpperCase()}<br/>
+                           Capacidad: ${item.capacidad}<br/>
+                           Precio: ${item.precio}<br/>
+                           Descripción: ${item.descripcion}`;
+          impresorasResults.appendChild(div);
+        });
+      } else {
+        impresorasResults.innerHTML = '<p>No hay impresoras que coincidan.</p>';
+      }
+    }
+
+    searchInput.addEventListener('input', e => {
+      buscar(e.target.value);
+    });
+
+    googleSearchBtn.addEventListener('click', () => {
+      const query = encodeURIComponent(searchInput.value.trim());
+      if(query) {
+        window.open(`https://www.google.com/search?q=${query}`, '_blank');
+      }
+    });
+
+    cargarDatos();
+  </script>
+</body>
+</html>
