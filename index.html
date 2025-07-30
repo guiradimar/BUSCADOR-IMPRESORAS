@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Buscador de Consumibles e Impresoras</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#f5f5f5;margin:0;padding:0;}
+    header{background:#4285F4;color:#fff;padding:20px;text-align:center;}
+    header h1{margin:0;text-transform:uppercase;}
+    .search{display:flex;justify-content:center;margin:20px;}
+    .search input{width:300px;padding:10px;border:1px solid #ccc;border-radius:4px 0 0 4px;}
+    .search button{padding:10px;border:1px solid #ccc;background:#0F9D58;color:#fff;border-radius:0 4px 4px 0;cursor:pointer;}
+    .error{color:red;text-align:center;}
+    .results{display:flex;justify-content:space-around;margin:20px;}
+    .box{background:#fff;padding:10px;width:45%;border-radius:4px;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+    .box h2{text-transform:uppercase;margin-top:0;}
+    .box ul{list-style:none;padding:0;}
+    .box li{padding:5px 0;border-bottom:1px solid #eee;text-transform:uppercase;}
+    .google{display:block;margin:20px auto;padding:10px 20px;background:#DB4437;color:#fff;border:none;border-radius:4px;cursor:pointer;}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Buscador de Consumibles e Impresoras</h1>
+  </header>
+  <div class="search">
+    <input id="q" placeholder="Ej. TN2220, HP301, Canon TS3350"/>
+    <button id="clear">Limpiar</button>
+  </div>
+  <div class="error" id="err"></div>
+  <div class="results">
+    <div class="box">
+      <h2>Consumibles</h2>
+      <ul id="consList"></ul>
+    </div>
+    <div class="box">
+      <h2>Impresoras</h2>
+      <ul id="impList"></ul>
+    </div>
+  </div>
+  <button class="google" id="google">Buscar en Google</button>
+
+  <script>
+    let data = [];
+    fetch('consumibles_impresoras_full.json')
+      .then(r => r.json())
+      .then(j => { data = j; console.log('JSON cargado:', data.length, 'registros'); })
+      .catch(e => { document.getElementById('err').textContent = 'Error cargando JSON'; });
+
+    const q = document.getElementById('q'),
+          err = document.getElementById('err'),
+          consList = document.getElementById('consList'),
+          impList = document.getElementById('impList'),
+          clearBtn = document.getElementById('clear'),
+          googleBtn = document.getElementById('google');
+
+    clearBtn.onclick = () => {
+      q.value = ''; err.textContent = ''; consList.innerHTML = ''; impList.innerHTML = '';
+      q.focus();
+    };
+    googleBtn.onclick = () => {
+      const t = q.value.trim(); if (t) window.open('https://www.google.com/search?q='+encodeURIComponent(t),'_blank');
+    };
+    q.addEventListener('keydown', e => { if (e.key==='Enter') search(); });
+
+    function normalize(s){ return String(s||'').toLowerCase(); }
+
+    function search(){
+      const term = normalize(q.value.trim());
+      if (!term) return;
+      err.textContent = ''; consList.innerHTML = ''; impList.innerHTML = '';
+
+      // Buscar en REFERENCIA, CONSUMIBLES y COMPATIBILIDADES/IMPRESORAS
+      data.forEach(item => {
+        const ref = normalize(item.REFERENCIA),
+              cons = normalize(item.CONSUMIBLES),
+              imp = normalize(item.IMPRESORAS),
+              comps = item.COMPATIBILIDADES.map(c => normalize(c));
+
+        if (ref.includes(term) || cons.includes(term) || comps.some(c=>c.includes(term))) {
+          // consumible
+          const liC = document.createElement('li');
+          liC.textContent = item.CONSUMIBLES;
+          consList.appendChild(liC);
+          // impresora principal
+          const liI = document.createElement('li');
+          liI.textContent = item.IMPRESORAS;
+          impList.appendChild(liI);
+        }
+        else if (imp.includes(term)) {
+          // impresora buscada
+          const liI = document.createElement('li');
+          liI.textContent = item.IMPRESORAS;
+          impList.appendChild(liI);
+        }
+      });
+
+      if (!consList.childElementCount && !impList.childElementCount) {
+        err.textContent = 'Código no encontrado: ' + q.value.trim();
+      }
+    }
+  </script>
+</body>
+</html>
