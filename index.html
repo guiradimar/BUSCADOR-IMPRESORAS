@@ -98,7 +98,7 @@
         r[compatCol] && r[compatCol].split(',').some(c => normalize(c.trim()).includes(term))
       );
       const namePrinterRows = data.filter(r =>
-        (r[nombreCol] && normalize(r[nombreCol]).includes(term) && r[compatCol])
+        r[nombreCol] && normalize(r[nombreCol]).includes(term) && !r[compatCol]
       );
 
       if (!consumRows.length && !compatRows.length && !namePrinterRows.length) {
