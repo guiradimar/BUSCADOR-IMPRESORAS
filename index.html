@@ -1,19 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Buscador de Consumibles e Impresoras</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BUSCADOR DE CONSUMIBLES E IMPRESORAS</title>
   <style>
     :root {
       --radius: 12px;
       --shadow: 0 4px 15px rgba(0,0,0,0.1);
       --color-printer: #e3f2fd;
       --color-consumable: #f1f8e9;
-      --google-blue: #4285F4;
-      --google-red: #DB4437;
-      --google-yellow: #F4B400;
-      --google-green: #0F9D58;
+      --input-border: #ccc;
+      --error-color: #DB4437;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -24,47 +22,55 @@
     }
     header {
       width: 100%; padding: 2rem 1rem;
-      background: linear-gradient(90deg, var(--google-blue), var(--google-green));
+      background: linear-gradient(90deg, #2196F3, #4CAF50);
       color: #fff; text-align: center;
       box-shadow: var(--shadow);
     }
     header h1 {
       font-size: 2rem; margin-bottom: 1rem;
+      text-transform: uppercase; color: #000;
     }
     .searchbar {
-      position: relative; width: 100%; max-width: 500px; margin: 0 auto;
+      display: flex; justify-content: center; align-items: center;
+      margin-top: 1rem;
     }
     .searchbar input {
-      width: 100%; padding: 0.75rem 1rem;
-      border: none; border-radius: var(--radius);
-      font-size: 1rem; transition: background 0.3s ease;
+      width: 300px; padding: 0.75rem 1rem;
+      border: 1px solid var(--input-border);
+      border-radius: var(--radius) 0 0 var(--radius);
+      font-size: 1rem;
+      transition: background 0.3s ease;
       background: #fff; box-shadow: var(--shadow);
-      color: #333;
     }
     .searchbar input:focus {
       outline: none; background: #e0f7fa;
     }
-    .searchbar button.clear {
-      position: absolute; right: 0.5rem; top: 50%;
-      transform: translateY(-50%);
-      background: transparent; border: none;
-      font-size: 1.2rem; cursor: pointer; color: #666;
+    .searchbar button {
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--input-border);
+      border-left: none;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      background: #fff;
+      cursor: pointer;
+      box-shadow: var(--shadow);
     }
     .error {
-      margin-top: 0.5rem; color: #DB4437; min-height: 1.4em;
+      margin-top: 0.5rem; color: var(--error-color);
+      min-height: 1.4em; text-align: center;
     }
     .grid {
-      display: flex; flex-wrap: wrap; justify-content: center;
-      gap: 1rem; width: 100%; max-width: 900px; padding: 1rem;
-      flex: 1 0 auto;
+      display: flex; gap: 1rem; margin: 2rem;
+      width: 100%; max-width: 800px;
+      justify-content: center;
     }
     .card {
-      flex: 1 1 45%; background: #fff;
+      flex: 1 1 40%; background: #fff;
       border-radius: var(--radius); box-shadow: var(--shadow);
-      padding: 1rem; max-height: 400px; overflow-y: auto;
+      padding: 1rem; max-height: 300px; overflow-y: auto;
     }
     .card h2 {
-      font-size: 1.25rem; margin-bottom: 0.5rem; text-transform: uppercase;
+      font-size: 1.25rem; margin-bottom: 0.5rem;
+      text-transform: uppercase; color: #000;
     }
     .card ul {
       list-style: none; padding: 0; margin: 0;
@@ -79,22 +85,20 @@
       margin: 1rem auto 2rem;
       padding: 0.75rem 2rem;
       border: none; border-radius: var(--radius);
-      background: linear-gradient(90deg, var(--google-blue), var(--google-red), var(--google-yellow), var(--google-green));
-      color: #fff; font-size: 1rem; cursor: pointer;
-      box-shadow: var(--shadow);
+      background: #DB4437; color: #fff; font-size: 1rem;
+      cursor: pointer; box-shadow: var(--shadow);
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Buscador de Consumibles e Impresoras</h1>
+    <h1>BUSCADOR DE CONSUMIBLES E IMPRESORAS</h1>
     <div class="searchbar">
       <input id="searchInput" type="text" placeholder="Ej. 001R00623, HP21, Canon..." autocomplete="off">
-      <button class="clear" id="clearBtn">✕</button>
+      <button id="clearBtn">Limpiar</button>
     </div>
     <div class="error" id="errorMsg"></div>
   </header>
-
   <div class="grid">
     <div class="card" id="consumiblesCard">
       <h2>Consumibles</h2>
@@ -105,73 +109,48 @@
       <ul id="impresorasList"></ul>
     </div>
   </div>
-
   <button class="google-btn" id="googleBtn">Buscar en Google</button>
-
   <script>
     let data = [];
     fetch('./consumibles_impresoras_full.json')
       .then(res => res.json())
       .then(json => data = json)
       .catch(() => document.getElementById('errorMsg').textContent = 'Error cargando datos');
-
     const inp = document.getElementById('searchInput');
     const clearBtn = document.getElementById('clearBtn');
     const err = document.getElementById('errorMsg');
     const consumList = document.getElementById('consumiblesList');
     const impresList = document.getElementById('impresorasList');
     const googleBtn = document.getElementById('googleBtn');
-
     function normalize(str) {
       return String(str).toLowerCase().normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
-        .replace(/[^a-z0-9 ]/g, '').trim();
+        .replace(/[̀-ͯ]/g,'')
+        .replace(/[^a-z0-9 ]/g,'').trim();
     }
-
     clearBtn.onclick = () => {
-      inp.value = ''; err.textContent = '';
-      consumList.innerHTML = ''; impresList.innerHTML = ''; inp.focus();
+      inp.value=''; err.textContent=''; consumList.innerHTML=''; impresList.innerHTML='';
     };
-
-    inp.onkeydown = e => { if (e.key === 'Enter') runSearch(); };
-
+    inp.onkeydown = e => { if(e.key==='Enter') runSearch(); };
     googleBtn.onclick = () => {
-      const q = inp.value.trim();
-      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
+      const q=inp.value.trim(); if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q));
     };
-
-    function runSearch() {
-      const raw = inp.value.trim();
-      if (!raw) return;
-      err.textContent = ''; consumList.innerHTML = ''; impresList.innerHTML = '';
-
-      const q = normalize(raw);
-      // filtramos filas que contengan q en REF, CONSUMIBLES, IMPRESORAS o DESCRIPCION
-      const rows = data.filter(item =>
-        normalize(item.REFERENCIA).includes(q) ||
-        normalize(item.CONSUMIBLES).includes(q) ||
-        normalize(item.IMPRESORAS).includes(q) ||
+    function runSearch(){
+      const raw=inp.value.trim(); if(!raw) return;
+      err.textContent=''; consumList.innerHTML=''; impresList.innerHTML='';
+      const q=normalize(raw);
+      const rows=data.filter(item =>
+        normalize(item.REFERENCIA).includes(q)||
+        normalize(item.CONSUMIBLES).includes(q)||
+        normalize(item.IMPRESORAS).includes(q)||
         normalize(item.DESCRIPCION).includes(q)
       );
-
-      if (!rows.length) {
-        err.textContent = `Código no encontrado: ${raw}`;
-        return;
+      if(!rows.length){
+        err.textContent=`Código no encontrado: ${raw}`; return;
       }
-
-      // Consumibles únicos y ordenados
-      const consSet = new Set(rows.map(r => r.CONSUMIBLES.toUpperCase()));
-      consSet.forEach(name => {
-        const li = document.createElement('li'); li.textContent = name;
-        consumList.appendChild(li);
-      });
-
-      // Impresoras únicas y ordenadas de las filas
-      const impSet = new Set(rows.map(r => r.IMPRESORAS.toUpperCase()));
-      impSet.forEach(name => {
-        const li = document.createElement('li'); li.textContent = name;
-        impresList.appendChild(li);
-      });
+      [...new Set(rows.map(r=>r.CONSUMIBLES.toUpperCase()))]
+        .forEach(name=>{ const li=document.createElement('li'); li.textContent=name; consumList.appendChild(li); });
+      [...new Set(rows.map(r=>r.IMPRESORAS.toUpperCase()))]
+        .forEach(name=>{ const li=document.createElement('li'); li.textContent=name; impresList.appendChild(li); });
     }
   </script>
 </body>
