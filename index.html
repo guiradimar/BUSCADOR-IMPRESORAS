@@ -112,8 +112,12 @@
       e.preventDefault();
       const term = normalize(document.getElementById('search').value);
       if (!term) return clearPanels();
-
-      // Buscar impresora primero
+      // Buscar impresora primero (coincidencia exacta en la lista de compatibilidades)
+      const printerFilt = data.filter(r => {
+        if (!r[compatCol]) return false;
+        const codes = r[compatCol].split(',').map(c => normalize(c.trim()));
+        return codes.includes(term);
+      });
       const printerFilt = data.filter(r => r[compatCol] && normalize(r[compatCol]).includes(term));
       if (printerFilt.length) return renderPrinterSearch(printerFilt);
 
