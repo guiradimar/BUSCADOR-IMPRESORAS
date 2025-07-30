@@ -72,7 +72,7 @@
   </main>
   <script>
     const normalize = s => s ? String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'') : '';
-    let data=[], cols=[], refCol, nombreCol, compatCol, categoryCol;
+    let data = [], cols = [], refCol, nombreCol, compatCol, categoryCol;
 
     async function loadData() {
       try {
@@ -80,59 +80,77 @@
         if (!res.ok) throw new Error();
         const js = await res.json();
         data = js.rows; cols = js.columns;
-        refCol = cols.find(c=>normalize(c).includes('referencia'));
-        nombreCol = cols.find(c=>normalize(c).includes('nombre'));
-        compatCol = cols.find(c=>normalize(c).includes('compatibil'));
-        categoryCol = cols.find(c=>normalize(c).includes('categoria'));
+        refCol = cols.find(c => normalize(c).includes('referencia'));
+        nombreCol = cols.find(c => normalize(c).includes('nombre'));
+        compatCol = cols.find(c => normalize(c).includes('compatibil'));
+        categoryCol = cols.find(c => normalize(c).includes('categoria'));
       } catch (e) {
-        const err=document.getElementById('msgError');
-        err.textContent='Error cargando datos'; err.style.display='block';
+        const err = document.getElementById('msgError');
+        err.textContent = 'Error cargando datos'; err.style.display = 'block';
       }
     }
 
     function clearPanels() {
-      document.getElementById('panelConsumibles').innerHTML='';
-      document.getElementById('panelImpresoras').innerHTML='';
-      document.getElementById('msgError').style.display='none';
-      document.getElementById('btnGoogle').style.display='none';
+      document.getElementById('panelConsumibles').innerHTML = '';
+      document.getElementById('panelImpresoras').innerHTML = '';
+      document.getElementById('msgError').style.display = 'none';
+      document.getElementById('btnGoogle').style.display = 'none';
     }
 
     function renderList(id, items) {
-      const ul=document.getElementById(id);
-      items.forEach(item=>{ const li=document.createElement('li'); li.textContent=item; ul.appendChild(li); });
+      const ul = document.getElementById(id);
+      ul.innerHTML = '';
+      items.forEach(item => {
+        const li = document.createElement('li'); li.textContent = item; ul.appendChild(li);
+      });
     }
 
     function onSearch(e) {
-      if (e.key!=='Enter') return;
+      if (e.key !== 'Enter') return;
       e.preventDefault(); clearPanels();
-      const raw=document.getElementById('search').value.trim();
-      const term=normalize(raw);
+      const raw = document.getElementById('search').value.trim();
+      const term = normalize(raw);
       if (!term) return;
-      const matched=data.filter(r=>
-        (r[nombreCol]&&normalize(r[nombreCol]).includes(term))||
-        (r[refCol]&&normalize(r[refCol]).includes(term))||
-        (r[compatCol]&&normalize(r[compatCol]).includes(term))||
-        (categoryCol&&r[categoryCol]&&normalize(r[categoryCol]).includes(term))
+
+      // Filtrar consumibles por referencia o nombre
+      const consumRows = data.filter(r =>
+        (r[refCol] && normalize(r[refCol]).includes(term)) ||
+        (r[nombreCol] && normalize(r[nombreCol]).includes(term))
       );
-      if (matched.length===0) {
-        const err=document.getElementById('msgError');
-        err.textContent=`CÓDIGO NO ENCONTRADO: ${raw}`; err.style.display='block';
-        const btn=document.getElementById('btnGoogle'); btn.style.display='block';
-        btn.onclick=()=>window.open(`https://google.com/search?q=${encodeURIComponent(raw)}`,'_blank');
+      // Filtrar impresoras buscando modelo en compatibilidades
+      const printerExact = data.filter(r =>
+        r[compatCol] && r[compatCol].split(',').map(c => normalize(c.trim())).includes(term)
+      );
+
+      if (!consumRows.length && !printerExact.length) {
+        const err = document.getElementById('msgError');
+        err.textContent = `CÓDIGO NO ENCONTRADO: ${raw}`; err.style.display = 'block';
+        const btn = document.getElementById('btnGoogle'); btn.style.display = 'block';
+        btn.onclick = () => window.open(`https://google.com/search?q=${encodeURIComponent(raw)}`,'_blank');
         return;
       }
-      const consumibles=[...new Set(matched.map(r=>r[nombreCol]).filter(Boolean))];
-      renderList('panelConsumibles',consumibles);
-      const printers=new Set();
-      matched.forEach(r=>{
-        if(r[compatCol]) r[compatCol].split(',').forEach(c=>{ const p=c.trim(); if(p) printers.add(p); });
+
+      // Si es búsqueda de impresora (sin consumRows), mostrar modelo en impresoras y sus consumibles
+      if (printerExact.length && !consumRows.length) {
+        renderList('panelImpresoras', [raw]);
+        const consum = [...new Set(printerExact.map(r => r[nombreCol]).filter(Boolean))];
+        renderList('panelConsumibles', consum);
+        return;
+      }
+
+      // Búsqueda de consumibles (o mixta)
+      const consumLabels = [...new Set(consumRows.map(r => r[nombreCol]).filter(Boolean))];
+      renderList('panelConsumibles', consumLabels);
+      const printers = new Set();
+      consumRows.forEach(r => {
+        if (r[compatCol]) r[compatCol].split(',').forEach(c => { const p = c.trim(); if (p) printers.add(p); });
       });
-      renderList('panelImpresoras',[...printers]);
+      renderList('panelImpresoras', [...printers]);
     }
 
-    document.getElementById('search').addEventListener('keydown',onSearch);
-    document.getElementById('clear').addEventListener('click',()=>{ document.getElementById('search').value=''; clearPanels(); });
-    window.addEventListener('load',()=>{ loadData(); clearPanels(); });
+    document.getElementById('search').addEventListener('keydown', onSearch);
+    document.getElementById('clear').addEventListener('click', () => { document.getElementById('search').value = ''; clearPanels(); });
+    window.addEventListener('load', () => { loadData(); clearPanels(); });
   </script>
 </body>
 </html>
