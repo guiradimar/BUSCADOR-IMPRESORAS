@@ -7,22 +7,45 @@
   <style>
     :root { --gap:14px; --radius:12px; --shadow:0 4px 12px rgba(0,0,0,0.1); }
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#f3f4f6; }
-    header { background:#fff; padding:2rem 1rem; text-align:center; box-shadow:var(--shadow); }
-    header h1 { font-size:2.5rem; margin-bottom:1rem; }
-    .searchbar { display:flex; justify-content:center; align-items:center; gap:10px; }
-    .searchbar input { width:280px; padding:10px 15px; border:2px solid #ccc; border-radius:999px; outline:none; transition:0.2s; }
-    .searchbar input:focus { border-color:#4285f4; box-shadow:0 0 8px rgba(66,133,244,0.3); }
-    .searchbar button { padding:10px 20px; border:none; border-radius:999px; background:#4285f4; color:#fff; cursor:pointer; }
-    .message { text-align:center; margin:10px 0; font-size:1rem; }
-    .message.error { color:#b91c1c; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; background:#f3f4f6; }
+    header { background:linear-gradient(90deg,#4285f4,#0f9d58); padding:2rem 1rem; text-align:center; color:#fff; box-shadow:var(--shadow); }
+    header h1 { font-size:3rem; margin-bottom:0.5rem; }
+    .searchbar { display:flex; justify-content:center; align-items:center; gap:var(--gap); }
+    .searchbar input {
+      width:360px; padding:14px 18px; border:2px solid #fff;
+      border-radius:999px; outline:none; transition:0.2s;
+      background:rgba(255,255,255,0.9); color:#333;
+    }
+    .searchbar input::placeholder { color:#666; }
+    .searchbar input:focus { border-color:#fff; box-shadow:0 0 12px rgba(255,255,255,0.4); }
+    .searchbar button {
+      padding:12px 22px; border:none; border-radius:999px;
+      background:#fff; color:#4285f4; font-weight:600; cursor:pointer;
+      box-shadow:var(--shadow); transition:transform .2s;
+    }
+    .searchbar button:hover { transform:scale(1.05); }
+    .message { text-align:center; margin:12px 0; font-size:1rem; }
+    .message.error { color:#ff5252; font-weight:600; }
     main { max-width:1000px; margin:20px auto; padding:0 10px; }
     .grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
-    .panel { background:#fff; border-radius:var(--radius); padding:15px; box-shadow:var(--shadow); min-height:150px; }
-    .panel h2 { margin-bottom:10px; font-size:1.2rem; }
-    .panel ul { list-style:disc inside; max-height:200px; overflow-y:auto; }
-    #btnGoogle { display:none; margin:20px auto; padding:10px 25px; border:none; border-radius:var(--radius);
-      background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58); color:#fff; cursor:pointer; }
+    .panel {
+      border-radius:var(--radius); padding:20px;
+      box-shadow:var(--shadow); min-height:200px;
+      background:#fff; transition:transform .2s;
+    }
+    .panel:hover { transform:translateY(-4px); }
+    .panel h2 { margin-bottom:12px; font-size:1.3rem; }
+    .panel.consumibles { border:2px solid #43a047; }
+    .panel.impresoras { border:2px solid #e53935; }
+    .panel ul { list-style:disc inside; max-height:220px; overflow-y:auto; }
+    #btnGoogle {
+      display:none; margin:30px auto 0; padding:12px 30px; border:none;
+      border-radius:var(--radius);
+      background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58);
+      color:#fff; font-weight:600; cursor:pointer;
+      box-shadow:var(--shadow); transition:opacity .2s;
+    }
+    #btnGoogle:hover { opacity:0.9; }
   </style>
 </head>
 <body>
@@ -36,11 +59,11 @@
   </header>
   <main>
     <div class="grid">
-      <div class="panel">
+      <div class="panel consumibles">
         <h2>CONSUMIBLES</h2>
         <ul id="panelConsumibles"></ul>
       </div>
-      <div class="panel">
+      <div class="panel impresoras">
         <h2>IMPRESORAS</h2>
         <ul id="panelImpresoras"></ul>
       </div>
@@ -49,76 +72,67 @@
   </main>
   <script>
     const normalize = s => s ? String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'') : '';
-    let data=[], cols=[], refCol, nombreCol, compatCol;
+    let data=[], cols=[], refCol, nombreCol, compatCol, categoryCol;
 
     async function loadData() {
       try {
-        const res = await fetch('dataset_clean.json');
+        const res = await fetch('dataset_with_categoria.json');
         if (!res.ok) throw new Error();
         const js = await res.json();
-        data = js.rows;
-        cols = js.columns;
-        refCol = cols.find(c => normalize(c).includes('referencia'));
-        nombreCol = cols.find(c => normalize(c).includes('nombre'));
-        compatCol = cols.find(c => normalize(c).includes('compatibil'));
+        data = js.rows; cols = js.columns;
+        refCol = cols.find(c=>normalize(c).includes('referencia'));
+        nombreCol = cols.find(c=>normalize(c).includes('nombre'));
+        compatCol = cols.find(c=>normalize(c).includes('compatibil'));
+        categoryCol = cols.find(c=>normalize(c).includes('categoria'));
       } catch (e) {
-        const err = document.getElementById('msgError');
-        err.textContent = 'Error cargando datos';
-        err.style.display = 'block';
+        const err=document.getElementById('msgError');
+        err.textContent='Error cargando datos'; err.style.display='block';
       }
     }
 
     function clearPanels() {
-      document.getElementById('panelConsumibles').innerHTML = '';
-      document.getElementById('panelImpresoras').innerHTML = '';
-      document.getElementById('msgError').style.display = 'none';
-      document.getElementById('btnGoogle').style.display = 'none';
+      document.getElementById('panelConsumibles').innerHTML='';
+      document.getElementById('panelImpresoras').innerHTML='';
+      document.getElementById('msgError').style.display='none';
+      document.getElementById('btnGoogle').style.display='none';
     }
 
     function renderList(id, items) {
-      const ul = document.getElementById(id);
-      items.forEach(item => {
-        const li = document.createElement('li'); li.textContent = item; ul.appendChild(li);
-      });
+      const ul=document.getElementById(id);
+      items.forEach(item=>{ const li=document.createElement('li'); li.textContent=item; ul.appendChild(li); });
     }
 
     function onSearch(e) {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
-      const raw = document.getElementById('search').value.trim();
-      const term = normalize(raw);
-      clearPanels();
+      if (e.key!=='Enter') return;
+      e.preventDefault(); clearPanels();
+      const raw=document.getElementById('search').value.trim();
+      const term=normalize(raw);
       if (!term) return;
-
-      const matched = data.filter(r =>
-        (r[nombreCol] && normalize(r[nombreCol]).includes(term)) ||
-        (r[refCol] && normalize(r[refCol]).includes(term))
+      const matched=data.filter(r=>
+        (r[nombreCol]&&normalize(r[nombreCol]).includes(term))||
+        (r[refCol]&&normalize(r[refCol]).includes(term))||
+        (r[compatCol]&&normalize(r[compatCol]).includes(term))||
+        (categoryCol&&r[categoryCol]&&normalize(r[categoryCol]).includes(term))
       );
-
-      if (matched.length === 0) {
-        const err = document.getElementById('msgError');
-        err.textContent = `CÓDIGO NO ENCONTRADO: ${raw}`;
-        err.style.display = 'block';
-        const btn = document.getElementById('btnGoogle'); btn.style.display = 'block';
-        btn.onclick = () => window.open(`https://google.com/search?q=${encodeURIComponent(raw)}`,'_blank');
+      if (matched.length===0) {
+        const err=document.getElementById('msgError');
+        err.textContent=`CÓDIGO NO ENCONTRADO: ${raw}`; err.style.display='block';
+        const btn=document.getElementById('btnGoogle'); btn.style.display='block';
+        btn.onclick=()=>window.open(`https://google.com/search?q=${encodeURIComponent(raw)}`,'_blank');
         return;
       }
-
-      // Consumibles
-      const consumibles = matched.map(r => r[nombreCol]).filter(Boolean);
-      renderList('panelConsumibles', [...new Set(consumibles)]);
-
-      // Impresoras
-      const printers = new Set();
-      matched.forEach(r => {
-        if (r[compatCol]) r[compatCol].split(',').forEach(c => {const p=c.trim(); if(p) printers.add(p)});
+      const consumibles=[...new Set(matched.map(r=>r[nombreCol]).filter(Boolean))];
+      renderList('panelConsumibles',consumibles);
+      const printers=new Set();
+      matched.forEach(r=>{
+        if(r[compatCol]) r[compatCol].split(',').forEach(c=>{ const p=c.trim(); if(p) printers.add(p); });
       });
-      renderList('panelImpresoras', [...printers]);
+      renderList('panelImpresoras',[...printers]);
     }
 
-    document.getElementById('search').addEventListener('keydown', onSearch);
-    document.getElementById('clear').addEventListener('click', () => { document.getElementById('search').value=''; clearPanels(); });
-    window.addEventListener('load', () => { loadData(); clearPanels(); });
+    document.getElementById('search').addEventListener('keydown',onSearch);
+    document.getElementById('clear').addEventListener('click',()=>{ document.getElementById('search').value=''; clearPanels(); });
+    window.addEventListener('load',()=>{ loadData(); clearPanels(); });
   </script>
 </body>
 </html>
