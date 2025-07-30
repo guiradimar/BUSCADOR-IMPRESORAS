@@ -54,9 +54,10 @@
 
     async function loadData() {
       try {
-        const res = await fetch('dataset_clean.json'); if (!res.ok) throw 0;
-        const js = await res.json(); data = js.rows; cols = js.columns;
-        // identificar columnas
+        const res = await fetch('dataset_clean.json');
+        if (!res.ok) throw new Error();
+        const js = await res.json();
+        data = js.rows; cols = js.columns;
         refCol = cols.find(c => normalize(c).includes('referencia'));
         nombreCol = cols.find(c => normalize(c).includes('nombre'));
         compatCol = cols.find(c => normalize(c).includes('compatibil'));
@@ -74,40 +75,48 @@
 
     function renderConsumibleSearch(rows) {
       clearPanels();
-      // If searching consumible, show its printers
       const pc = document.getElementById('panelConsumibles');
       rows.forEach(r => r[nombreCol] && pc.appendChild(li(r[nombreCol])));
       const pi = document.getElementById('panelImpresoras');
-      rows.forEach(r => {
-        if (r[compatCol]) r[compatCol].split(',').forEach(code => pi.appendChild(li(code.trim())));
-      });
+      // listaremos la impresora buscada de forma individual
+      const searchVal = document.getElementById('search').value;
+      pi.appendChild(li(searchVal));
     }
 
-    function renderPrinterSearch(rows, term) {
+    function renderPrinterSearch(rows) {
       clearPanels();
-      // Show cartridges for printer rows
       const pc = document.getElementById('panelConsumibles');
+      // para cada fila que contiene la impresora, mostrar consumibles asociados
       rows.forEach(r => r[nombreCol] && pc.appendChild(li(r[nombreCol])));
-      // Show searched printer in impresoras panel
       const pi = document.getElementById('panelImpresoras');
-      pi.appendChild(li(document.getElementById('search').value));
+      // mostrar todas las impresoras compatibles listadas
+      let printers = new Set();
+      rows.forEach(r => {
+        if (r[compatCol]) r[compatCol].split(',').forEach(code => printers.add(code.trim()));
+      });
+      printers.forEach(code => pi.appendChild(li(code)));
     }
 
     function li(text) { const e = document.createElement('li'); e.textContent = text; return e; }
 
     function onSearch(e) {
-      if (e.key !== 'Enter') return; e.preventDefault();
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
       const term = normalize(document.getElementById('search').value);
       if (!term) return clearPanels();
+
+      // Buscar impresora primero
+      const printerFilt = data.filter(r => r[compatCol] && normalize(r[compatCol]).includes(term));
+      if (printerFilt.length) return renderPrinterSearch(printerFilt);
+
+      // Buscar consumible
       const consumFilt = data.filter(r =>
         (r[refCol] && normalize(r[refCol]).includes(term)) ||
         (r[nombreCol] && normalize(r[nombreCol]).includes(term))
       );
       if (consumFilt.length) return renderConsumibleSearch(consumFilt);
-      const printerFilt = data.filter(r =>
-        r[compatCol] && normalize(r[compatCol]).includes(term)
-      );
-      if (printerFilt.length) return renderPrinterSearch(printerFilt, term);
+
+      // Sin resultados
       clearPanels();
       const err = document.getElementById('msgError');
       const btn = document.getElementById('btnGoogle');
