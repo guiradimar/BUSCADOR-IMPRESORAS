@@ -42,10 +42,12 @@
     <div id="results">
       <div class="grid" id="mainPanels">
         <div class="panel c-consumibles">
-          <h2>CONSUMIBLES</h2><ul id="panelConsumibles"></ul>
+          <h2>CONSUMIBLES</h2>
+          <ul id="panelConsumibles"></ul>
         </div>
         <div class="panel c-impresoras">
-          <h2>IMPRESORAS</h2><ul id="panelImpresoras"></ul>
+          <h2>IMPRESORAS</h2>
+          <ul id="panelImpresoras"></ul>
         </div>
       </div>
       <div class="grid" id="extraPanels"></div>
@@ -53,59 +55,97 @@
     </div>
   </main>
   <script>
-    const normalize = s => s?s.toString().normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,''):'';
-    let data=[],columns=[],consumCols=[],impresCols=[],otherCols=[];
-    async function loadData(){
-      try{
-        const resp=await fetch('dataset_clean.json'); if(!resp.ok) throw 0;
-        const js=await resp.json(); data=js.rows; columns=js.columns;
-        columns.forEach(col=>{
-          const k=normalize(col);
-          if(k.includes('referenc')||k.includes('nombre')) consumCols.push(col);
-          else if(k.includes('compatibil')) impresCols.push(col);
-          else if(!k.includes('categoria')) otherCols.push(col);
-        });
-      }catch{
-        const e=document.getElementById('msgError'); e.textContent='Error cargando datos'; e.style.display='';
+    const normalize = s => s ? s.toString().normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'') : '';
+    let data = [], columns = [], consumCols = [], impresCols = [], otherCols = [];
+    // Carga JSON
+    async function loadData() {
+      try {
+        const resp = await fetch('dataset_clean.json');
+        if (!resp.ok) throw 0;
+        const js = await resp.json();
+        data = js.rows;
+        columns = js.columns;
+        // Solo columna 'nombre' en consumibles
+        consumCols = columns.filter(c => normalize(c).includes('nombre') );
+        impresCols = columns.filter(c => normalize(c).includes('compatibil') );
+        otherCols = columns.filter(c => !normalize(c).includes('nombre') && !normalize(c).includes('compatibil'));
+      } catch {
+        const e = document.getElementById('msgError');
+        e.textContent = 'Error cargando datos';
+        e.style.display = '';
       }
     }
-    function showItem(item){
-      // Consumibles
-      const pc=document.getElementById('panelConsumibles'); pc.innerHTML='';
-      consumCols.forEach(c=>{ if(item[c]!=null) pc.appendChild(li(item[c])); });
+    // Mostrar solo un producto
+    function showItem(item) {
+      // Consumibles: solo 'nombre'
+      const pc = document.getElementById('panelConsumibles');
+      pc.innerHTML = '';
+      consumCols.forEach(c => {
+        if (item[c] != null) pc.appendChild(li(item[c]));
+      });
       // Impresoras
-      const pi=document.getElementById('panelImpresoras'); pi.innerHTML='';
-      impresCols.forEach(c=>{ if(item[c]!=null) pi.appendChild(li(item[c])); });
-      // Extra
-      const ext=document.getElementById('extraPanels'); ext.innerHTML='';
-      otherCols.forEach((c,i)=>{
-        const panel=document.createElement('div'); panel.className='panel '+(i%2?'c-col-even':'c-col-odd');
-        const h2=document.createElement('h2'); h2.textContent=c;
-        const ul=document.createElement('ul');
-        if(item[c]!=null){
-          let v=item[c];
-          if(c.toLowerCase().includes('descripcion')) v=v.split('\n')[0];
+      const pi = document.getElementById('panelImpresoras');
+      pi.innerHTML = '';
+      impresCols.forEach(c => {
+        if (item[c] != null) pi.appendChild(li(item[c]));
+      });
+      // Extra campos
+      const ext = document.getElementById('extraPanels');
+      ext.innerHTML = '';
+      otherCols.forEach((c,i) => {
+        const panel = document.createElement('div');
+        panel.className = 'panel ' + (i%2 ? 'c-col-even' : 'c-col-odd');
+        const h2 = document.createElement('h2'); h2.textContent = c;
+        const ul = document.createElement('ul');
+        if (item[c] != null) {
+          let v = item[c];
+          // Primera línea en descripción
+          if (normalize(c).includes('descripcion')) v = v.split('\n')[0];
           ul.appendChild(li(v));
         }
-        panel.append(h2,ul); ext.append(panel);
+        panel.append(h2, ul);
+        ext.append(panel);
       });
     }
-    function li(t){const e=document.createElement('li'); e.textContent=t; return e; }
-    function onSearch(){
-      const term=normalize(document.getElementById('search').value);
-      const err=document.getElementById('msgError'), btn=document.getElementById('btnGoogle');
-      if(!term){ err.style.display='none'; btn.style.display='none'; return; }
-      const found=data.find(r=> consumCols.concat(impresCols).some(c=>normalize(r[c]).includes(term)));
-      if(!found){
-        err.textContent=`CÓDIGO NO ENCONTRADO: ${document.getElementById('search').value}`; err.style.display='';
-        btn.style.display=''; btn.onclick=()=>window.open(`https://google.com/search?q=${encodeURIComponent(document.getElementById('search').value)}`);
-      }else{
-        err.style.display='none'; btn.style.display='none'; showItem(found);
+    function li(text) { const e = document.createElement('li'); e.textContent = text; return e; }
+    // Búsqueda solo al ENTER
+    function onKeyDown(e) {
+      if (e.key === 'Enter') onSearch();
+    }
+    function onSearch() {
+      const term = normalize(document.getElementById('search').value);
+      const err = document.getElementById('msgError');
+      const btnG = document.getElementById('btnGoogle');
+      if (!term) return;
+      const found = data.find(r =>
+        consumCols.concat(impresCols).some(c => normalize(r[c]).includes(term))
+      );
+      if (!found) {
+        err.textContent = `CÓDIGO NO ENCONTRADO: ${document.getElementById('search').value}`;
+        err.style.display = '';
+        btnG.style.display = '';
+        btnG.onclick = () => window.open(
+          `https://google.com/search?q=${encodeURIComponent(document.getElementById('search').value)}`,
+          '_blank'
+        );
+      } else {
+        err.style.display = 'none';
+        btnG.style.display = 'none';
+        showItem(found);
       }
     }
-    document.getElementById('search').addEventListener('input',onSearch);
-    document.getElementById('clear').addEventListener('click',()=>{ document.getElementById('search').value=''; document.getElementById('msgError').style.display='none'; });
-    window.addEventListener('load',loadData);
+    // Limpiar
+    function onClear() {
+      document.getElementById('search').value = '';
+      document.getElementById('msgError').style.display = 'none';
+      document.getElementById('panelConsumibles').innerHTML = '';
+      document.getElementById('panelImpresoras').innerHTML = '';
+      document.getElementById('extraPanels').innerHTML = '';
+      document.getElementById('btnGoogle').style.display = 'none';
+    }
+    document.getElementById('search').addEventListener('keydown', onKeyDown);
+    document.getElementById('clear').addEventListener('click', onClear);
+    window.addEventListener('load', loadData);
   </script>
 </body>
 </html>
