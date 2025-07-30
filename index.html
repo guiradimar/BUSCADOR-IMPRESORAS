@@ -92,9 +92,9 @@
         renderFiltered(filtered);
       }
     }
-    document.getElementById('search').addEventListener('keydown', onSearch);
+    document.getElementById('search').addEventListener('keyup', onSearch); // Listener mejorado para Enter y compatibilidad
     document.getElementById('clear').addEventListener('click', clearAll);
-    window.addEventListener('load', loadData);
+    window.addEventListener('load', () => { loadData(); clearAll(); });
   </script>
 </body>
 </html>
