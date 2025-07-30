@@ -76,11 +76,19 @@
     function renderConsumibleSearch(rows) {
       clearPanels();
       const pc = document.getElementById('panelConsumibles');
+      // Mostrar solo los nombres de consumibles asociados
       rows.forEach(r => r[nombreCol] && pc.appendChild(li(r[nombreCol])));
       const pi = document.getElementById('panelImpresoras');
-      // listaremos la impresora buscada de forma individual
-      const searchVal = document.getElementById('search').value;
-      pi.appendChild(li(searchVal));
+      // Mostrar impresoras compatibles de esos consumibles
+      const printers = new Set();
+      rows.forEach(r => {
+        if (r[compatCol]) {
+          r[compatCol].split(',').forEach(code => {
+            const p = code.trim(); if (p) printers.add(p);
+          });
+        }
+      });
+      printers.forEach(code => pi.appendChild(li(code)));
     }
 
     function renderPrinterSearch(rows) {
