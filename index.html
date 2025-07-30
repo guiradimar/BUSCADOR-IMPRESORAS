@@ -29,6 +29,9 @@
   <div class="error" id="errorMsg">&nbsp;</div>
   <div class="results">
     <div class="box"><h2>Consumibles</h2><ul id="consumiblesList"></ul></div>
+    <div class="box"><h2>Capacidades</h2><ul id="capacidadesList"></ul></div>
+    <div class="box"><h2>Impresoras</h2><ul id="impresorasList"></ul></div>
+  </div>
     <div class="box"><h2>Impresoras</h2><ul id="impresorasList"></ul></div>
   </div>
   <button class="google-btn" id="googleBtn">Buscar en Google</button>
@@ -47,6 +50,7 @@
     const inp = document.getElementById('searchInput');
     const err = document.getElementById('errorMsg');
     const consUL = document.getElementById('consumiblesList');
+    const capUL = document.getElementById('capacidadesList');
     const impUL = document.getElementById('impresorasList');
 
     document.getElementById('clearBtn').onclick = () => {
@@ -54,8 +58,10 @@
       err.textContent = '';
       err.style.visibility = 'hidden';
       consUL.innerHTML = '';
+      capUL.innerHTML = '';
       impUL.innerHTML = '';
       inp.focus();
+    };
     };
 
     document.getElementById('googleBtn').onclick = () => {
@@ -80,20 +86,35 @@
       err.textContent = '';
       err.style.visibility = 'hidden';
       consUL.innerHTML = '';
+      capUL.innerHTML = '';
       impUL.innerHTML = '';
       if (!term) return;
 
-      const seenC = new Set(), seenI = new Set();
+      const seenC = new Set(), seenI = new Set(), seenCap = new Set();
 
-      // 1) Si buscas cartucho/toner por REFERENCIA o CONSUMIBLES
+      // Unificado: buscar en REFERENCIA, CONSUMIBLES, COMPATIBILIDADES
       data.forEach(item => {
-        if (normalize(item.REFERENCIA).includes(term) || normalize(item.CONSUMIBLES).includes(term)) {
-          // mostrar consumible
+        const ref = normalize(item.REFERENCIA);
+        const cons = normalize(item.CONSUMIBLES);
+        const comps = item.COMPATIBILIDADES.map(c => normalize(c));
+        if (ref.includes(term) || cons.includes(term) || comps.some(c => c.includes(term))) {
+          // Consumible
           if (!seenC.has(item.CONSUMIBLES)) {
             seenC.add(item.CONSUMIBLES);
             consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
           }
-          // mostrar impresoras compatibles (col COMPATIBILIDADES)
+          // Capacidad
+          const cap = item.CAPACIDAD || 'sin capacidad';
+          if (!seenCap.has(cap)) {
+            seenCap.add(cap);
+            capUL.innerHTML += `<li>${cap}</li>`;
+          }
+          // Impresora principal
+          if (!seenI.has(item.IMPRESORAS)) {
+            seenI.add(item.IMPRESORAS);
+            impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`;
+          }
+          // Compatibilidades completas
           item.COMPATIBILIDADES.forEach(c => {
             if (!seenI.has(c)) {
               seenI.add(c);
@@ -103,35 +124,6 @@
         }
       });
 
-      // 2) Si buscas impresora por COMPATIBILIDADES
-      // encontrar nombres de impresoras en compatibilidades que contengan term
-      const printers = data.reduce((set, item) => {
-        item.COMPATIBILIDADES.forEach(c => {
-          if (normalize(c).includes(term)) set.add(c);
-        });
-        return set;
-      }, new Set());
-      // mostrar impresoras
-      printers.forEach(name => {
-        if (!seenI.has(name)) {
-          seenI.add(name);
-          impUL.innerHTML += `<li>${name}</li>`;
-        }
-      });
-      // para cada impresora encontrada, buscar consumibles que la incluyan en compatibilidades
-      printers.forEach(prName => {
-        data.forEach(item => {
-          if (item.COMPATIBILIDADES.some(c => normalize(c) === normalize(prName))) {
-            const text = `${item.CONSUMIBLES} (${item.CAPACIDAD || 'sin capacidad'})`;
-            if (!seenC.has(text)) {
-              seenC.add(text);
-              consUL.innerHTML += `<li>${text}</li>`;
-            }
-          }
-        });
-      });
-
-      // 3) Mensaje de error si nada
       if (seenC.size === 0 && seenI.size === 0) {
         err.textContent = 'Código no encontrado: ' + inp.value;
         err.style.visibility = 'visible';
