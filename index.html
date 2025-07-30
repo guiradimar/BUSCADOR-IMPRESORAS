@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Buscador de Consumibles e Impresoras</title>
   <style>
     :root { --radius: 12px; --shadow: 0 8px 20px rgba(0,0,0,0.1); }
     * { box-sizing: border-box; }
     body {
-      margin: 0; font-family: 'Arial', sans-serif;
+      margin: 0; font-family: Arial, sans-serif;
       background: #f0f4f8; color: #333;
     }
     header {
-      background: linear-gradient(90deg,#4285F4,#34A853);
+      background: linear-gradient(90deg, #4285F4, #34A853);
       padding: 2rem; text-align: center;
       box-shadow: var(--shadow);
     }
@@ -21,7 +21,7 @@
       margin-top: 1rem; display: flex; justify-content: center;
     }
     .searchbar input {
-      width: 400px; padding: 0.75rem 1rem;
+      width: 350px; padding: 0.75rem 1rem;
       border: none; border-radius: var(--radius);
       font-size: 1rem;
     }
@@ -49,7 +49,7 @@
       max-height: 300px; overflow-y: auto;
     }
     .card h2 { margin-top: 0; font-size: 1.25rem; }
-    .card ul { padding-left: 1rem; }
+    .card ul { padding-left: 1rem; margin: 0; }
     .btn-google {
       display: block; margin: 1rem auto;
       padding: 0.75rem 2rem;
@@ -64,7 +64,7 @@
   <header>
     <h1>Buscador de Consumibles e Impresoras</h1>
     <div class="searchbar">
-      <input type="text" id="searchInput" placeholder="Ingrese referencia o modelo">
+      <input type="text" id="searchInput" placeholder="Ingrese referencia o modelo" />
       <button id="clearBtn">Limpiar</button>
     </div>
     <div class="error" id="errorMsg"></div>
@@ -83,10 +83,11 @@
   <button class="btn-google" id="googleBtn">Buscar en Google</button>
 
   <script>
-    let data = null;
+    let data = [];
     fetch('dataset_full_with_consumibles.json')
-      .then(res=>res.json()).then(json=>{ data = json.rows; })
-      .catch(err=> document.getElementById('errorMsg').textContent = 'Error cargando datos');
+      .then(res => res.json())
+      .then(json => data = json)
+      .catch(err => document.getElementById('errorMsg').textContent = 'Error cargando datos');
 
     const inp = document.getElementById('searchInput');
     const clear = document.getElementById('clearBtn');
@@ -95,48 +96,47 @@
     const iList = document.getElementById('impresorasList');
     const gBtn = document.getElementById('googleBtn');
 
-    function render(items, listEl) {
-      listEl.innerHTML = '';
-      items.forEach(it=>{
+    function render(array, el) {
+      el.innerHTML = '';
+      array.forEach(item => {
         const li = document.createElement('li');
-        li.textContent = it;
-        listEl.appendChild(li);
+        li.textContent = item;
+        el.appendChild(li);
       });
     }
 
-    inp.addEventListener('keypress', e=>{
-      if(e.key==='Enter') doSearch();
-    });
-    clear.addEventListener('click', ()=>{
+    inp.addEventListener('keypress', e => { if (e.key === 'Enter') doSearch(); });
+    clear.addEventListener('click', () => {
       inp.value = '';
       err.textContent = '';
       render([], cList);
       render([], iList);
     });
-    gBtn.addEventListener('click', ()=>{
+    gBtn.addEventListener('click', () => {
       const q = inp.value.trim();
-      if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q));
+      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
     });
 
-    function doSearch(){
+    function doSearch() {
       const q = inp.value.trim().toLowerCase();
-      if(!data) return;
-      if(!q) return;
+      if (!q || !data.length) return;
       err.textContent = '';
 
-      // buscar en compatList (impresoras)
-      const imp = data.filter(r=> r.COMPATIBILIDADES.toLowerCase().includes(q))
-                      .flatMap(r=> r.COMPATIBILIDADES.split(','))
-                      .map(x=> x.trim())
-                      .filter(x=> x.toLowerCase().includes(q));
-      // buscar consumibles por referencia o nombre
-      const cons = data.filter(r=> r.REFERENCIA.toLowerCase().includes(q)
-                         || r.NOMBRE.toLowerCase().includes(q))
-                       .map(r=> r.NOMBRE);
+      const impresoras = data
+        .filter(r => r.modelo.toLowerCase().includes(q))
+        .map(r => r.modelo);
 
-      if(imp.length) render(imp, iList);
-      if(cons.length) render(cons, cList);
-      if(!imp.length && !cons.length) err.textContent = `Código no encontrado: ${q}`;
+      const consumibles = data
+        .filter(r => r.modelo.toLowerCase().includes(q))
+        .flatMap(r => r.consumibles)
+        .filter((v,i,a) => a.indexOf(v) === i);
+
+      if (!impresoras.length && !consumibles.length) {
+        err.textContent = `Código no encontrado: ${q}`;
+      }
+
+      render(impresoras, iList);
+      render(consumibles, cList);
     }
   </script>
 </body>
