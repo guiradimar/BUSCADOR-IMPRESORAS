@@ -1,41 +1,41 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>BUSCADOR DE IMPRESORAS</title>
   <style>
     :root { --gap:14px; --radius:12px; --shadow:0 8px 20px rgba(0,0,0,0.06); }
-    *{box-sizing:border-box;}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f6f7f9;color:#111;}
-    header{text-align:center;padding:2rem 1rem;background:#fff;box-shadow:var(--shadow);}
-    header h1{margin:0;font-size:2.75rem;}
-    .searchbar{display:flex;justify-content:center;gap:.5rem;margin:1.5rem auto;}
-    .searchbar input{width:280px;padding:.75rem 1rem;border:2px solid #ccc;border-radius:999px;outline:none;transition:border-color .2s,box-shadow .2s;}
-    .searchbar input.active{border-color:#4285F4;box-shadow:0 0 8px rgba(66,133,244,0.5);}
-    .searchbar button{padding:.75rem 1.25rem;border:none;border-radius:999px;background:#4285F4;color:#fff;cursor:pointer;}
-    .message{ text-align:center;margin:.5rem 0; }
-    .message.error{color:#D93025;font-weight:bold;}
-    .message.info{color:#555;}
-    main{max-width:1200px;margin:0 auto;padding:1rem;}
-    .grid{display:grid;gap:var(--gap);grid-template-columns:repeat(auto-fit,minmax(320px,1fr));}
-    .panel{background:#fff;border-radius:var(--radius);padding:1rem;box-shadow:var(--shadow);border:1px solid #e2e2e2;}
-    .panel h2{margin-top:0;font-size:1.2rem;}
-    .panel ul{margin:0;padding-left:1.25rem;max-height:200px;overflow-y:auto;}
-    .c-consumibles{border-color:#0F9D58;background:#E6F4EA;}
-    .c-impresoras{border-color:#DB4437;background:#FDE7E7;}
-    .c-col-odd{border-color:#F4B400;background:#FEF7E0;}
-    .c-col-even{border-color:#0F9D58;background:#E6F4EA;}
-    #btnGoogle{display:block;margin:1rem auto;padding:.75rem 1.5rem;border:none;border-radius:var(--radius);
-      background:linear-gradient(90deg,#4285F4 25%,#DB4437 50%,#F4B400 75%,#0F9D58);
-      color:#fff;font-size:1rem;cursor:pointer;}
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #f6f7f9; color: #111; }
+    header { text-align: center; padding: 2rem 1rem; background: #fff; box-shadow: var(--shadow); }
+    header h1 { margin: 0; font-size: 2.75rem; }
+    .searchbar { display: flex; justify-content: center; gap: .5rem; margin: 1.5rem auto; }
+    .searchbar input { width: 280px; padding: .75rem 1rem; border: 2px solid #ccc; border-radius: 999px; outline: none; transition: border-color .2s, box-shadow .2s; }
+    .searchbar input.active { border-color: #4285F4; box-shadow: 0 0 8px rgba(66,133,244,0.5); }
+    .searchbar button { padding: .75rem 1.25rem; border: none; border-radius: 999px; background: #4285F4; color: #fff; cursor: pointer; }
+    .message { text-align: center; margin: .5rem 0; }
+    .message.error { color: #D93025; font-weight: bold; }
+    .message.info { color: #555; }
+    main { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+    .grid { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+    .panel { background: #fff; border-radius: var(--radius); padding: 1rem; box-shadow: var(--shadow); border: 1px solid #e2e2e2; }
+    .panel h2 { margin-top: 0; font-size: 1.2rem; }
+    .panel ul { margin: 0; padding-left: 1.25rem; max-height: 200px; overflow-y: auto; }
+    .c-consumibles { border-color: #0F9D58; background: #E6F4EA; }
+    .c-impresoras { border-color: #DB4437; background: #FDE7E7; }
+    .c-col-odd { border-color: #F4B400; background: #FEF7E0; }
+    .c-col-even { border-color: #0F9D58; background: #E6F4EA; }
+    #btnGoogle { display: block; margin: 1rem auto; padding: .75rem 1.5rem; border: none; border-radius: var(--radius);
+      background: linear-gradient(90deg, #4285F4 25%, #DB4437 50%, #F4B400 75%, #0F9D58);
+      color: #fff; font-size: 1rem; cursor: pointer; }
   </style>
 </head>
 <body>
   <header>
     <h1>BUSCADOR DE IMPRESORAS</h1>
     <div class="searchbar">
-      <input id="search" type="search" placeholder="Ingresa referencia, nombre o compatibilidad..."/>
+      <input id="search" type="search" placeholder="Ingresa referencia, nombre o compatibilidad..." />
       <button id="clear">Limpiar</button>
     </div>
     <div id="msgError" class="message error" style="display:none;"></div>
@@ -51,42 +51,110 @@
   </main>
   <script>
     const normalize = s => s?.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'')||'';
-    let rows=[],cols=[],consumCols=[],impresCols=[],otherCols=[];
-    async function loadData(){
-      try{
-        const data=await (await fetch('dataset_clean.json')).json();
-        rows=data.rows;cols=data.columns;
-      }catch(e){document.getElementById('msgInfo').textContent='Error al cargar datos';return;}
-      cols.forEach(c=>{const k=normalize(c);if(k.includes('referenc')||k.includes('nombre'))consumCols.push(c);
-        else if(k.includes('compatibil'))impresCols.push(c);else otherCols.push(c);
+    let rows = [], cols = [], consumCols = [], impresCols = [], otherCols = [];
+
+    async function loadData() {
+      let data;
+      const paths = ['dataset_clean.json', 'data/dataset_clean.json'];
+      for (const path of paths) {
+        try {
+          const res = await fetch(path);
+          if (!res.ok) throw new Error();
+          data = await res.json();
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+      if (!data) {
+        document.getElementById('msgInfo').textContent = 'Error al cargar datos';
+        return;
+      }
+      rows = data.rows;
+      cols = data.columns;
+      cols.forEach(c => {
+        const key = normalize(c);
+        if (key.includes('referenc') || key.includes('nombre')) consumCols.push(c);
+        else if (key.includes('compatibil')) impresCols.push(c);
+        else otherCols.push(c);
       });
-      document.getElementById('msgInfo').remove();renderAll(rows);
+      document.getElementById('msgInfo').remove();
+      renderAll(rows);
     }
-    function renderAll(list){renderMain(list);renderExtra(list);}
-    function renderMain(list){
-      const pc=document.getElementById('panelConsumibles'),pi=document.getElementById('panelImpresoras');pc.innerHTML='';pi.innerHTML='';
-      list.forEach(r=>{consumCols.forEach(c=>r[c]&&pc.appendChild(li(r[c])));impresCols.forEach(c=>r[c]&&pi.appendChild(li(r[c])));});
+
+    function renderAll(list) {
+      renderMain(list);
+      renderExtra(list);
     }
-    function renderExtra(list){
-      const cont=document.getElementById('extraPanels');cont.innerHTML='';
-      otherCols.forEach((c,i)=>{const d=document.createElement('div');d.className='panel '+(i%2?'c-col-even':'c-col-odd');
-        const u=document.createElement('ul');list.forEach(r=>r[c]&&u.appendChild(li(r[c])));
-        d.innerHTML=`<h2>${c}</h2>`;d.appendChild(u);cont.appendChild(d);
+
+    function renderMain(list) {
+      const pc = document.getElementById('panelConsumibles');
+      const pi = document.getElementById('panelImpresoras');
+      pc.innerHTML = '';
+      pi.innerHTML = '';
+      list.forEach(r => {
+        consumCols.forEach(c => {
+          if (r[c] != null) pc.appendChild(li(r[c]));
+        });
+        impresCols.forEach(c => {
+          if (r[c] != null) pi.appendChild(li(r[c]));
+        });
       });
     }
-    function li(t){const e=document.createElement('li');e.textContent=t;return e;}
-    function onSearch(){
-      const v=normalize(document.getElementById('search').value),err=document.getElementById('msgError'),btn=document.getElementById('btnGoogle');
-      if(!v){err.style.display='none';btn.style.display='none';renderAll(rows);return;}
-      const f=rows.filter(r=>cols.some(c=>normalize(r[c]).includes(v)));
-      if(f.length===0){err.textContent=`CÓDIGO NO ENCONTRADO: ${document.getElementById('search').value}`;err.style.display='block';btn.style.display='block';
-        btn.onclick=()=>window.open(`https://www.google.com/search?q=${encodeURIComponent(document.getElementById('search').value)}`);
-      }else{err.style.display='none';btn.style.display='none';}
-      renderAll(f);
+
+    function renderExtra(list) {
+      const container = document.getElementById('extraPanels');
+      container.innerHTML = '';
+      otherCols.forEach((c, i) => {
+        const panel = document.createElement('div');
+        panel.className = 'panel ' + (i % 2 === 0 ? 'c-col-even' : 'c-col-odd');
+        const header = document.createElement('h2');
+        header.textContent = c;
+        const ul = document.createElement('ul');
+        list.forEach(r => {
+          if (r[c] != null) ul.appendChild(li(r[c]));
+        });
+        panel.appendChild(header);
+        panel.appendChild(ul);
+        container.appendChild(panel);
+      });
     }
-    document.getElementById('search').addEventListener('input',onSearch);
-    document.getElementById('clear').addEventListener('click',()=>{document.getElementById('search').value='';onSearch();});
-    window.addEventListener('load',loadData);
+
+    function li(text) {
+      const element = document.createElement('li');
+      element.textContent = text;
+      return element;
+    }
+
+    function onSearch() {
+      const term = normalize(document.getElementById('search').value);
+      const errorMsg = document.getElementById('msgError');
+      const googleBtn = document.getElementById('btnGoogle');
+      if (!term) {
+        errorMsg.style.display = 'none';
+        googleBtn.style.display = 'none';
+        renderAll(rows);
+        return;
+      }
+      const filtered = rows.filter(r => cols.some(c => normalize(r[c]).includes(term)));
+      if (filtered.length === 0) {
+        errorMsg.textContent = `CÓDIGO NO ENCONTRADO: ${document.getElementById('search').value}`;
+        errorMsg.style.display = 'block';
+        googleBtn.style.display = 'block';
+        googleBtn.onclick = () => window.open(`https://www.google.com/search?q=${encodeURIComponent(document.getElementById('search').value)}`, '_blank');
+      } else {
+        errorMsg.style.display = 'none';
+        googleBtn.style.display = 'none';
+      }
+      renderAll(filtered);
+    }
+
+    document.getElementById('search').addEventListener('input', onSearch);
+    document.getElementById('clear').addEventListener('click', () => {
+      document.getElementById('search').value = '';
+      onSearch();
+    });
+    window.addEventListener('load', loadData);
   </script>
 </body>
 </html>
