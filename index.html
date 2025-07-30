@@ -49,52 +49,85 @@
     <button id="btnGoogle" style="display:none;">BUSCAR EN GOOGLE</button>
   </main>
   <script>
-    const normalize = s => s?String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,''):'';
+    const normalize = s => s ? String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'') : '';
     let data = [], cols = [], consumCols = [], impresCols = [];
+
     async function loadData() {
       try {
-        const res = await fetch('dataset_clean.json'); if(!res.ok) throw 0;
-        const js = await res.json(); data = js.rows; cols = js.columns;
+        const res = await fetch('dataset_clean.json');
+        if (!res.ok) throw new Error();
+        const js = await res.json();
+        data = js.rows;
+        cols = js.columns;
         consumCols = cols.filter(c => normalize(c).includes('referenc') || normalize(c).includes('nombre'));
         impresCols = cols.filter(c => normalize(c).includes('compatibil'));
       } catch {
-        const e = document.getElementById('msgError'); e.textContent = 'Error cargando datos'; e.style.display = '';
+        const e = document.getElementById('msgError');
+        e.textContent = 'Error cargando datos';
+        e.style.display = '';
       }
     }
-    function clearAll() {
-      document.getElementById('search').value = '';
-      document.getElementById('msgError').style.display = 'none';
+
+    function clearPanels() {
       document.getElementById('panelConsumibles').innerHTML = '';
       document.getElementById('panelImpresoras').innerHTML = '';
+      document.getElementById('msgError').style.display = 'none';
       document.getElementById('btnGoogle').style.display = 'none';
     }
+
     function renderFiltered(list) {
-      const pc = document.getElementById('panelConsumibles'); pc.innerHTML = '';
-      list.forEach(r => consumCols.forEach(c => r[c] && pc.appendChild(li(r[c]))));
-      const pi = document.getElementById('panelImpresoras'); pi.innerHTML = '';
-      list.forEach(r => impresCols.forEach(c => r[c] && r[c].split(',').forEach(code => pi.appendChild(li(code.trim())))));
+      clearPanels();
+      const pc = document.getElementById('panelConsumibles');
+      list.forEach(r => consumCols.forEach(c => {
+        if (r[c] != null) pc.appendChild(li(r[c]));
+      }));
+      const pi = document.getElementById('panelImpresoras');
+      list.forEach(r => impresCols.forEach(c => {
+        if (r[c] != null) {
+          r[c].split(',').forEach(code => pi.appendChild(li(code.trim())));
+        }
+      }));
     }
-    function li(text) { const e = document.createElement('li'); e.textContent = text; return e; }
+
+    function li(text) {
+      const e = document.createElement('li');
+      e.textContent = text;
+      return e;
+    }
+
     function onSearch(e) {
       if (e.key !== 'Enter') return;
       e.preventDefault();
-      clearAll();
       const term = normalize(document.getElementById('search').value);
-      if (!term) return;
-      const filtered = data.filter(r => consumCols.concat(impresCols).some(c => normalize(r[c]).includes(term)));
-      const err = document.getElementById('msgError'), btn = document.getElementById('btnGoogle');
+      if (!term) {
+        clearPanels();
+        return;
+      }
+      const filtered = data.filter(r =>
+        consumCols.concat(impresCols).some(c => normalize(r[c]).includes(term))
+      );
+      const err = document.getElementById('msgError');
+      const btn = document.getElementById('btnGoogle');
       if (!filtered.length) {
+        clearPanels();
         err.textContent = `CÓDIGO NO ENCONTRADO: ${document.getElementById('search').value}`;
         err.style.display = '';
         btn.style.display = '';
-        btn.onclick = () => window.open(`https://google.com/search?q=${encodeURIComponent(document.getElementById('search').value)}`, '_blank');
+        btn.onclick = () => window.open(
+          `https://google.com/search?q=${encodeURIComponent(document.getElementById('search').value)}`,
+          '_blank'
+        );
       } else {
         renderFiltered(filtered);
       }
     }
-    document.getElementById('search').addEventListener('keyup', onSearch); // Listener mejorado para Enter y compatibilidad
-    document.getElementById('clear').addEventListener('click', clearAll);
-    window.addEventListener('load', () => { loadData(); clearAll(); });
+
+    document.getElementById('search').addEventListener('keydown', onSearch);
+    document.getElementById('clear').addEventListener('click', () => {
+      document.getElementById('search').value = '';
+      clearPanels();
+    });
+    window.addEventListener('load', loadData);
   </script>
 </body>
 </html>
