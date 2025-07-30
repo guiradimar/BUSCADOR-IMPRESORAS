@@ -52,53 +52,82 @@
     <button id="btnGoogle" style="display:none;">BUSCAR EN GOOGLE</button>
   </main>
   <script>
-    // normalize text
-    const normalize = s => s?.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'')||'';
-    let dataRows=[], dataCols=[];
-    let consumCols=[], impresCols=[], otherCols=[];
-    // load JSON
-    fetch('data/dataset_clean.json').then(r=>r.json()).then(data=>{
-      dataRows=data.rows||[]; dataCols=data.columns||[];
-      // categorize columns
-      dataCols.forEach(c=>{
-        const key=normalize(c);
-        if(key.includes('referenc')||key.includes('nombre')) consumCols.push(c);
-        else if(key.includes('compatibil')) impresCols.push(c);
-        else otherCols.push(c);
+    // Normalize string
+    const normalize = s => s?.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'') || '';
+    let rows = [], cols = [], consumCols = [], impresCols = [], otherCols = [];
+    // Fetch JSON
+    fetch('data/dataset_clean.json')
+      .then(r => r.json())
+      .then(data => {
+        rows = data.rows || [];
+        cols = data.columns || [];
+        cols.forEach(c => {
+          const key = normalize(c);
+          if (key.includes('referenc') || key.includes('nombre')) consumCols.push(c);
+          else if (key.includes('compatibil')) impresCols.push(c);
+          else otherCols.push(c);
+        });
+        document.getElementById('msgInfo').style.display = 'none';
+        renderAll(rows);
+      })
+      .catch(() => {
+        document.getElementById('msgInfo').textContent = 'Error al cargar datos';
       });
-      document.getElementById('msgInfo').textContent='';
-      renderAll();
-    }).catch(e=>{
-      document.getElementById('msgInfo').textContent='Error al cargar datos';
-    });
-    // render
-    function renderAll(){ render(); renderExtra(); }
-    function render(){
-      const q=normalize(document.getElementById('search').value);
-      const noFound=document.getElementById('msgError');
-      const googleBtn=document.getElementById('btnGoogle');
-      let results=dataRows.filter(r=>!q||dataCols.some(c=>normalize(r[c]).includes(q)));
-      noFound.style.display='none'; googleBtn.style.display='none';
-      if(q&&results.length===0){ noFound.textContent=`CÓDIGO NO ENCONTRADO: ${document.getElementById('search').value}`; noFound.style.display='block';
-        googleBtn.style.display='block'; googleBtn.onclick=()=>window.open(`https://www.google.com/search?q=${encodeURIComponent(document.getElementById('search').value)}`);
+    // Render both main and extra panels based on filtered rows
+    function renderAll(filtered) {
+      renderMain(filtered);
+      renderExtra(filtered);
+    }
+    function renderMain(filtered) {
+      const panelC = document.getElementById('panelConsumibles');
+      const panelI = document.getElementById('panelImpresoras');
+      panelC.innerHTML = '';
+      panelI.innerHTML = '';
+      filtered.forEach(r => {
+        consumCols.forEach(c => { const v = r[c]; if (v) panelC.appendChild(li(v)); });
+        impresCols.forEach(c => { const v = r[c]; if (v) panelI.appendChild(li(v)); });
+      });
+    }
+    function renderExtra(filtered) {
+      const container = document.getElementById('extraPanels');
+      container.innerHTML = '';
+      otherCols.forEach((c, i) => {
+        const div = document.createElement('div');
+        div.className = 'panel ' + (i % 2 ? 'c-col-even' : 'c-col-odd');
+        const ul = document.createElement('ul');
+        filtered.forEach(r => {
+          const v = r[c]; if (v) ul.appendChild(li(v));
+        });
+        div.innerHTML = `<h2>${c}</h2>`;
+        div.appendChild(ul);
+        container.appendChild(div);
+      });
+    }
+    function li(text) { const li = document.createElement('li'); li.textContent = text; return li; }
+    // Search logic
+    function onSearch() {
+      const term = normalize(document.getElementById('search').value);
+      const err = document.getElementById('msgError');
+      const info = document.getElementById('msgInfo');
+      const btnG = document.getElementById('btnGoogle');
+      if (!term) {
+        err.style.display = 'none'; btnG.style.display = 'none';
+        renderAll(rows);
+        return;
       }
-      fill('panelConsumibles',results,consumCols);
-      fill('panelImpresoras',results,impresCols);
+      const filtered = rows.filter(r => cols.some(c => normalize(r[c]).includes(term)));
+      if (filtered.length === 0) {
+        err.textContent = `CÓDIGO NO ENCONTRADO: ${document.getElementById('search').value}`;
+        err.style.display = 'block';
+        btnG.style.display = 'block';
+        btnG.onclick = () => window.open(`https://www.google.com/search?q=${encodeURIComponent(document.getElementById('search').value)}`, '_blank');
+      } else {
+        err.style.display = 'none'; btnG.style.display = 'none';
+      }
+      renderAll(filtered);
     }
-    function renderExtra(){
-      const container=document.getElementById('extraPanels'); container.innerHTML='';
-      otherCols.forEach((c,i)=>{
-        const div=document.createElement('div'); div.className='panel '+(i%2?'c-col-even':'c-col-odd');
-        div.innerHTML=`<h2>${c}</h2><ul id=col${i}></ul>`; container.appendChild(div);
-        fill(`col${i}`,dataRows, [c]);
-      });
-    }
-    function fill(id, rows, cols){ const ul=document.getElementById(id); ul.innerHTML='';
-      const set=new Set(); rows.forEach(r=>cols.forEach(c=>{ let v=r[c]; if(v!=null) set.add(v);}));
-      Array.from(set).slice(0,200).forEach(v=>{ const li=document.createElement('li'); li.textContent=v; ul.appendChild(li); });
-    }
-    document.getElementById('search').addEventListener('input',render);
-    document.getElementById('clear').addEventListener('click',()=>{document.getElementById('search').value=''; render();});
+    document.getElementById('search').addEventListener('input', onSearch);
+    document.getElementById('clear').addEventListener('click', () => { document.getElementById('search').value = ''; onSearch(); });
   </script>
 </body>
 </html>
