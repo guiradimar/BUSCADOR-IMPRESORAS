@@ -1,120 +1,143 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Buscador de Consumibles e Impresoras</title>
   <style>
-    :root { --gap:14px; --radius:12px; --shadow:0 4px 12px rgba(0,0,0,0.1); }
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; background:#f3f4f6; }
-    header { background:linear-gradient(90deg,#4285f4,#0f9d58); padding:2rem; text-align:center; color:#fff; }
-    header h1 { font-size:2.5rem; }
-    .searchbar { display:flex; justify-content:center; align-items:center; gap:10px; margin-top:1rem; }
-    .searchbar input { flex:1; max-width:300px; padding:10px 15px; border-radius:999px; border:2px solid #fff; outline:none; }
-    .searchbar button { padding:10px 20px; border:none; border-radius:999px; background:#fff; color:#4285f4; cursor:pointer; }
-    .message { text-align:center; margin:1rem 0; color:#e53e3e; font-weight:600; display:none; }
-    main { max-width:900px; margin:2rem auto; padding:0 1rem; }
-    .grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
-    .panel { background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:1rem; }
-    .panel h2 { margin-bottom:.5rem; }
-    .panel ul { list-style:disc inside; max-height:200px; overflow-y:auto; }
-    #btnGoogle { display:block; margin:1rem auto; padding:10px 25px; background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58); color:#fff; border:none; border-radius:var(--radius); cursor:pointer; }
+    :root { --radius: 12px; --shadow: 0 8px 20px rgba(0,0,0,0.1); }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: 'Arial', sans-serif;
+      background: #f0f4f8; color: #333;
+    }
+    header {
+      background: linear-gradient(90deg,#4285F4,#34A853);
+      padding: 2rem; text-align: center;
+      box-shadow: var(--shadow);
+    }
+    header h1 { margin: 0; font-size: 2.5rem; color: #fff; }
+    .searchbar {
+      margin-top: 1rem; display: flex; justify-content: center;
+    }
+    .searchbar input {
+      width: 400px; padding: 0.75rem 1rem;
+      border: none; border-radius: var(--radius);
+      font-size: 1rem;
+    }
+    .searchbar button {
+      margin-left: 1rem;
+      padding: 0.75rem 1.5rem;
+      border: none; border-radius: var(--radius);
+      background: #fff; color: #4285F4;
+      font-size: 1rem; cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+    .error {
+      text-align: center; color: #E53935;
+      margin-top: 0.5rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 1000px; margin: 2rem auto;
+    }
+    .card {
+      background: #fff; border-radius: var(--radius);
+      padding: 1rem; box-shadow: var(--shadow);
+      max-height: 300px; overflow-y: auto;
+    }
+    .card h2 { margin-top: 0; font-size: 1.25rem; }
+    .card ul { padding-left: 1rem; }
+    .btn-google {
+      display: block; margin: 1rem auto;
+      padding: 0.75rem 2rem;
+      border: none; border-radius: var(--radius);
+      background: linear-gradient(90deg,#4285F4,#FBBC05,#34A853);
+      color: #fff; font-size: 1rem;
+      cursor: pointer; box-shadow: var(--shadow);
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Buscador de Consumibles e Impresoras</h1>
     <div class="searchbar">
-      <input id="search" type="text" placeholder="Referencia, nombre o modelo" autocomplete="off" />
-      <button id="clear">Limpiar</button>
+      <input type="text" id="searchInput" placeholder="Ingrese referencia o modelo">
+      <button id="clearBtn">Limpiar</button>
     </div>
-    <div id="msgError" class="message"></div>
+    <div class="error" id="errorMsg"></div>
   </header>
-  <main>
-    <div class="grid">
-      <div class="panel">
-        <h2>Consumibles</h2>
-        <ul id="panelConsumibles"></ul>
-      </div>
-      <div class="panel">
-        <h2>Impresoras</h2>
-        <ul id="panelImpresoras"></ul>
-      </div>
+
+  <div class="grid">
+    <div class="card" id="consumiblesCard">
+      <h2>Consumibles</h2>
+      <ul id="consumiblesList"></ul>
     </div>
-    <button id="btnGoogle">Buscar en Google</button>
-  </main>
+    <div class="card" id="impresorasCard">
+      <h2>Impresoras</h2>
+      <ul id="impresorasList"></ul>
+    </div>
+  </div>
+  <button class="btn-google" id="googleBtn">Buscar en Google</button>
+
   <script>
-    const normalize = s => s ? String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase() : '';
-    let data = [];
+    let data = null;
+    fetch('dataset_full_with_consumibles.json')
+      .then(res=>res.json()).then(json=>{ data = json.rows; })
+      .catch(err=> document.getElementById('errorMsg').textContent = 'Error cargando datos');
 
-    async function loadData() {
-      try {
-        const res = await fetch('dataset_full_with_consumibles.json');
-        if (!res.ok) throw new Error('JSON no encontrado');
-        const js = await res.json();
-        data = js.rows || js;
-      } catch (e) {
-        const err = document.getElementById('msgError');
-        err.textContent = 'Error cargando datos'; err.style.display = 'block';
-      }
-    }
+    const inp = document.getElementById('searchInput');
+    const clear = document.getElementById('clearBtn');
+    const err = document.getElementById('errorMsg');
+    const cList = document.getElementById('consumiblesList');
+    const iList = document.getElementById('impresorasList');
+    const gBtn = document.getElementById('googleBtn');
 
-    function clearPanels() {
-      document.getElementById('panelConsumibles').innerHTML = '';
-      document.getElementById('panelImpresoras').innerHTML = '';
-      document.getElementById('msgError').style.display = 'none';
-    }
-
-    function renderList(id, items) {
-      const ul = document.getElementById(id);
-      ul.innerHTML = '';
-      items.forEach(item => {
+    function render(items, listEl) {
+      listEl.innerHTML = '';
+      items.forEach(it=>{
         const li = document.createElement('li');
-        li.textContent = item;
-        ul.appendChild(li);
+        li.textContent = it;
+        listEl.appendChild(li);
       });
     }
 
-    function searchTerm(raw) {
-      const term = normalize(raw);
-      clearPanels();
-      if (!term) return;
-      const btn = document.getElementById('btnGoogle');
-      btn.onclick = () => window.open(`https://www.google.com/search?q=${encodeURIComponent(raw)}`, '_blank');
+    inp.addEventListener('keypress', e=>{
+      if(e.key==='Enter') doSearch();
+    });
+    clear.addEventListener('click', ()=>{
+      inp.value = '';
+      err.textContent = '';
+      render([], cList);
+      render([], iList);
+    });
+    gBtn.addEventListener('click', ()=>{
+      const q = inp.value.trim();
+      if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q));
+    });
 
-      // Buscar impresoras (compatibles)
-      const impRows = data.filter(r => r.CONSUMIBLES_COMPATIBLES && r.CONSUMIBLES_COMPATIBLES.some(c => normalize(c).includes(term)));
-      if (impRows.length) {
-        const printers = [...new Set(impRows.flatMap(r => r.compatList))];
-        renderList('panelImpresoras', printers);
-        const consum = [...new Set(impRows.flatMap(r => r.CONSUMIBLES_COMPATIBLES))];
-        renderList('panelConsumibles', consum);
-        return;
-      }
+    function doSearch(){
+      const q = inp.value.trim().toLowerCase();
+      if(!data) return;
+      if(!q) return;
+      err.textContent = '';
 
-      // Buscar consumibles
-      const consRows = data.filter(r =>
-        (r.REFERENCIA && normalize(r.REFERENCIA).includes(term)) ||
-        (r.NOMBRE && normalize(r.NOMBRE).includes(term))
-      );
-      if (consRows.length) {
-        const cons = [...new Set(consRows.map(r => r.NOMBRE))];
-        renderList('panelConsumibles', cons);
-        const printers = [...new Set(consRows.flatMap(r => r.compatList))];
-        renderList('panelImpresoras', printers);
-        return;
-      }
+      // buscar en compatList (impresoras)
+      const imp = data.filter(r=> r.COMPATIBILIDADES.toLowerCase().includes(q))
+                      .flatMap(r=> r.COMPATIBILIDADES.split(','))
+                      .map(x=> x.trim())
+                      .filter(x=> x.toLowerCase().includes(q));
+      // buscar consumibles por referencia o nombre
+      const cons = data.filter(r=> r.REFERENCIA.toLowerCase().includes(q)
+                         || r.NOMBRE.toLowerCase().includes(q))
+                       .map(r=> r.NOMBRE);
 
-      // Error
-      const err = document.getElementById('msgError');
-      err.textContent = `Código no encontrado: ${raw}`;
-      err.style.display = 'block';
+      if(imp.length) render(imp, iList);
+      if(cons.length) render(cons, cList);
+      if(!imp.length && !cons.length) err.textContent = `Código no encontrado: ${q}`;
     }
-
-    document.getElementById('search').addEventListener('keydown', e => { if (e.key==='Enter') searchTerm(e.target.value.trim()); });
-    document.getElementById('clear').addEventListener('click', () => { document.getElementById('search').value = ''; clearPanels(); });
-    window.addEventListener('load', () => { loadData().then(clearPanels); });
   </script>
 </body>
 </html>
