@@ -25,7 +25,6 @@
       width: 100%; padding: 2rem 1rem;
       background: linear-gradient(90deg, #2196F3, #4CAF50);
       box-shadow: var(--shadow);
-      text-align: center;
       display: flex; flex-direction: column; align-items: center;
     }
     header h1 {
@@ -33,7 +32,7 @@
       text-transform: uppercase; color: #000;
     }
     .searchbar {
-      display: flex; width: 100%; max-width: 500px; margin-top: 1rem;
+      display: flex; width: 100%; max-width: 500px;
     }
     .searchbar input {
       flex: 1; padding: 0.75rem 1rem;
@@ -42,8 +41,9 @@
       font-size: 1rem; background: #fff; box-shadow: var(--shadow);
     }
     .searchbar button {
-      padding: 0.75rem 1rem; border: 1px solid var(--input-border);
-      border-left: none; border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--input-border); border-left: none;
+      border-radius: 0 var(--radius) var(--radius) 0;
       background: var(--btn-clear); color: #fff; cursor: pointer;
       box-shadow: var(--shadow);
     }
@@ -52,8 +52,8 @@
       min-height: 1.4em; text-align: center; visibility: hidden;
     }
     .grid {
-      display: flex; gap: 1rem; margin: 2rem; width: 100%;
-      max-width: 800px; justify-content: center;
+      display: flex; gap: 1rem; margin: 2rem;
+      width: 100%; max-width: 800px; justify-content: center;
     }
     .card {
       flex: 1 1 40%; background: #fff;
@@ -83,7 +83,7 @@
   <header>
     <h1>Buscador de Consumibles e Impresoras</h1>
     <div class="searchbar">
-      <input id="searchInput" type="text" placeholder="Ej. HP1200, 001R00623, Canon..." />
+      <input id="searchInput" type="text" placeholder="Ej. HP301, CH561EE, Canon TS3350" />
       <button id="clearBtn">Limpiar</button>
     </div>
     <div class="error" id="errorMsg"></div>
@@ -103,36 +103,13 @@
     function normalize(s) {
       return String(s||'').toLowerCase().normalize('NFD')
         .replace(/[̀-ͯ]/g,'')
-        .replace(/[^a-z0-9]/g,'');
+        .trim();
     }
 
-    let data = [], printerMap = {}, consumibleMap = {}, referenceMap = {};
+    let data = [];
     fetch('./consumibles_impresoras_full.json')
       .then(r => r.json())
-      .then(json => {
-        data = json;
-        data.forEach(item => {
-          const pr = normalize(item.IMPRESORAS);
-          const co = normalize(item.CONSUMIBLES);
-          const rf = normalize(item.REFERENCIA);
-          printerMap[pr] = printerMap[pr]||new Set();
-          consumibleMap[co] = consumibleMap[co]||new Set();
-          referenceMap[rf] = referenceMap[rf]||{impr:new Set(), cons:new Set()};
-
-          printerMap[pr].add(item.CONSUMIBLES);
-          consumibleMap[co].add(item.IMPRESORAS);
-
-          (item.COMPATIBILIDADES||[]).forEach(p => {
-            const pp = normalize(p);
-            printerMap[pp] = printerMap[pp]||new Set();
-            printerMap[pp].add(item.CONSUMIBLES);
-            consumibleMap[co].add(p);
-          });
-
-          referenceMap[rf].impr.add(item.IMPRESORAS);
-          referenceMap[rf].cons.add(item.CONSUMIBLES);
-        });
-      })
+      .then(json => data = json)
       .catch(() => {
         const e = document.getElementById('errorMsg');
         e.textContent = 'Error cargando datos'; e.style.visibility = 'visible';
@@ -146,58 +123,59 @@
           googleBtn = document.getElementById('googleBtn');
 
     clearBtn.onclick = () => {
-      inp.value=''; err.style.visibility='hidden';
-      consumList.innerHTML=''; impresList.innerHTML=''; inp.focus();
+      inp.value = ''; err.style.visibility = 'hidden';
+      consumList.innerHTML = ''; impresList.innerHTML = '';
+      inp.focus();
     };
-    inp.addEventListener('keydown', e => { if(e.key==='Enter') runSearch(); });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
     googleBtn.onclick = () => {
       let q = inp.value.trim();
-      if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank');
+      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
     };
 
     function runSearch() {
       const raw = inp.value.trim();
-      if(!raw) return;
-      err.style.visibility='hidden';
-      consumList.innerHTML=''; impresList.innerHTML='';
+      if (!raw) return;
+      err.style.visibility = 'hidden';
+      consumList.innerHTML = ''; impresList.innerHTML = '';
 
-      const norm = normalize(raw);
-      const cons = new Set(), impr = new Set();
+      const q = normalize(raw);
+      let foundPrinter = data.find(item => normalize(item.IMPRESORAS) === q);
+      let foundConsumible = data.find(item => normalize(item.CONSUMIBLES) === q || normalize(item.REFERENCIA) === q);
 
-      if(referenceMap[norm]) {
-        referenceMap[norm].cons.forEach(c=>cons.add(c.toUpperCase()));
-        referenceMap[norm].impr.forEach(i=>impr.add(i.toUpperCase()));
-      }
-      if(consumibleMap[norm]) {
-        consumibleMap[norm].forEach(i=>impr.add(i.toUpperCase()));
-        Object.keys(printerMap).forEach(p =>{
-          printerMap[p].forEach(c=>{
-            if(normalize(c)===norm) impr.add(p.toUpperCase());
+      // Printer search
+      if (foundPrinter) {
+        // Show that printer
+        impresList.appendChild(createLi(foundPrinter.IMPRESORAS));
+        // Find consumibles where COMPATIBILIDADES includes this printer
+        data.forEach(item => {
+          (item.COMPATIBILIDADES||[]).forEach(p => {
+            if (normalize(p) === q) consumList.appendChild(createLi(item.CONSUMIBLES));
           });
         });
-        data.filter(d=>normalize(d.CONSUMIBLES)===norm)
-            .forEach(d=>cons.add(d.CONSUMIBLES.toUpperCase()));
-      }
-      if(printerMap[norm]) {
-        printerMap[norm].forEach(c=>cons.add(c.toUpperCase()));
-        data.filter(d=>normalize(d.IMPRESORAS)===norm)
-            .forEach(d=>impr.add(d.IMPRESORAS.toUpperCase()));
-      }
-
-      if(!cons.size && !impr.size) {
-        err.textContent=`Código no encontrado: ${raw}`; err.style.visibility='visible';
+        if (!consumList.children.length) {
+          err.textContent = 'No hay consumibles compatibles.'; err.style.visibility = 'visible';
+        }
         return;
       }
-      cons.forEach(c=>{
-        const li = document.createElement('li');
-        li.textContent = c;
-        consumList.appendChild(li);
-      });
-      impr.forEach(i=>{
-        const li = document.createElement('li');
-        li.textContent = i;
-        impresList.appendChild(li);
-      });
+
+      // Consumible search
+      if (foundConsumible) {
+        // Show that consumible
+        consumList.appendChild(createLi(foundConsumible.CONSUMIBLES));
+        // Find printers: main + compatibles
+        impresList.appendChild(createLi(foundConsumible.IMPRESORAS));
+        (foundConsumible.COMPATIBILIDADES||[]).forEach(p => impresList.appendChild(createLi(p)));
+        return;
+      }
+
+      err.textContent = `Código no encontrado: ${raw}`; err.style.visibility = 'visible';
+    }
+
+    function createLi(text) {
+      const li = document.createElement('li');
+      li.textContent = text.toUpperCase();
+      return li;
     }
   </script>
 </body>
