@@ -7,146 +7,108 @@
   <style>
     :root { --radius: 12px; --shadow: 0 8px 20px rgba(0,0,0,0.1); }
     * { box-sizing: border-box; }
-    body {
-      margin: 0; font-family: Arial, sans-serif;
-      background: #f0f4f8; color: #333;
-    }
-    header {
-      background: linear-gradient(90deg, #4285F4, #34A853);
-      padding: 2rem; text-align: center;
-      box-shadow: var(--shadow);
-    }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f0f4f8; color: #333; }
+    header { background: linear-gradient(90deg, #4285F4, #34A853); padding: 2rem; text-align: center; box-shadow: var(--shadow); }
     header h1 { margin: 0; font-size: 2.5rem; color: #fff; }
-    .searchbar {
-      margin-top: 1rem; display: flex; justify-content: center;
-    }
-    .searchbar input {
-      width: 350px; padding: 0.75rem 1rem;
-      border: none; border-radius: var(--radius);
-      font-size: 1rem;
-    }
-    .searchbar button {
-      margin-left: 1rem;
-      padding: 0.75rem 1.5rem;
-      border: none; border-radius: var(--radius);
-      background: #fff; color: #4285F4;
-      font-size: 1rem; cursor: pointer;
-      box-shadow: var(--shadow);
-    }
-    .error {
-      text-align: center; color: #E53935;
-      margin-top: 0.5rem;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      max-width: 1000px; margin: 2rem auto;
-    }
-    .card {
-      background: #fff; border-radius: var(--radius);
-      padding: 1rem; box-shadow: var(--shadow);
-      max-height: 300px; overflow-y: auto;
-    }
+    .searchbar { margin-top: 1rem; display: flex; justify-content: center; align-items: center; }
+    .searchbar input { width: 300px; padding: 0.75rem 1rem; border: none; border-radius: var(--radius); font-size: 1rem; }
+    .searchbar button { margin-left: 1rem; padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius); background: #fff; color: #4285F4; font-size: 1rem; cursor: pointer; box-shadow: var(--shadow); }
+    .error { text-align: center; color: #E53935; margin-top: 0.5rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1000px; margin: 2rem auto; }
+    .card { background: #fff; border-radius: var(--radius); padding: 1rem; box-shadow: var(--shadow); min-height: 200px; overflow-y: auto; }
     .card h2 { margin-top: 0; font-size: 1.25rem; }
-    .card ul { padding-left: 1rem; margin: 0; }
-    .btn-google {
-      display: block; margin: 1rem auto;
-      padding: 0.75rem 2rem;
-      border: none; border-radius: var(--radius);
-      background: linear-gradient(90deg,#4285F4,#FBBC05,#34A853);
-      color: #fff; font-size: 1rem;
-      cursor: pointer; box-shadow: var(--shadow);
-    }
+    .card ul { padding-left: 1rem; margin: 0; list-style: disc; }
+    .btn-google { display: block; margin: 1rem auto; padding: 0.75rem 2rem; border: none; border-radius: var(--radius); background: linear-gradient(90deg,#4285F4,#FBBC05,#34A853); color: #fff; font-size: 1rem; cursor: pointer; box-shadow: var(--shadow); }
   </style>
 </head>
 <body>
   <header>
     <h1>Buscador de Consumibles e Impresoras</h1>
     <div class="searchbar">
-      <input type="text" id="searchInput" placeholder="Ingrese referencia, nombre o modelo" />
+      <input type="text" id="searchInput" placeholder="Ingresa referencia, modelo o nombre" />
       <button id="clearBtn">Limpiar</button>
     </div>
     <div class="error" id="errorMsg"></div>
   </header>
 
   <div class="grid">
-    <div class="card" id="consumiblesCard">
+    <div class="card">
       <h2>Consumibles</h2>
       <ul id="consumiblesList"></ul>
     </div>
-    <div class="card" id="impresorasCard">
+    <div class="card">
       <h2>Impresoras</h2>
       <ul id="impresorasList"></ul>
     </div>
   </div>
+
   <button class="btn-google" id="googleBtn">Buscar en Google</button>
 
   <script>
     let data = [];
-    // Cargar JSON con el nuevo nombre y ruta
     fetch('dataset_full_with_consumibles.json')
       .then(res => res.json())
       .then(json => data = json)
-      .catch(err => document.getElementById('errorMsg').textContent = 'Error cargando datos');
+      .catch(() => document.getElementById('errorMsg').textContent = 'Error cargando datos');
 
     const inp = document.getElementById('searchInput');
-    const clear = document.getElementById('clearBtn');
+    const clearBtn = document.getElementById('clearBtn');
     const err = document.getElementById('errorMsg');
-    const cList = document.getElementById('consumiblesList');
-    const iList = document.getElementById('impresorasList');
-    const gBtn = document.getElementById('googleBtn');
+    const consumList = document.getElementById('consumiblesList');
+    const impresList = document.getElementById('impresorasList');
+    const googleBtn = document.getElementById('googleBtn');
 
-    function render(items, el) {
-      el.innerHTML = '';
-      items.forEach(text => {
-        const li = document.createElement('li');
-        li.textContent = text;
-        el.appendChild(li);
-      });
-    }
-
-    inp.addEventListener('keypress', e => { if (e.key === 'Enter') doSearch(); });
-    clear.addEventListener('click', () => {
+    function clearAll() {
       inp.value = '';
       err.textContent = '';
-      render([], cList);
-      render([], iList);
-    });
-    gBtn.addEventListener('click', () => {
+      consumList.innerHTML = '';
+      impresList.innerHTML = '';
+    }
+    clearBtn.addEventListener('click', clearAll);
+
+    googleBtn.addEventListener('click', () => {
       const q = inp.value.trim();
       if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
     });
 
-    function doSearch() {
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') search();
+    });
+
+    function search() {
       const q = inp.value.trim().toLowerCase();
-      if (!q || !data.length) return;
+      if (!q) return;
       err.textContent = '';
+      // Filtrar impresoras por categoría y coincidencias en REFERENCIA, NOMBRE o COMPATIBILIDADES
+      const impresoras = data.filter(item =>
+        item.CATEGORIA.toLowerCase().includes('impresora') && (
+          item.REFERENCIA.toLowerCase().includes(q) ||
+          item.NOMBRE.toLowerCase().includes(q) ||
+          (item.COMPATIBILIDADES || '').toLowerCase().includes(q)
+        )
+      ).map(item => item.NOMBRE);
 
-      // Filtrar impresoras: buscar en modelo o nombre si categoria es Impresora
-      const impresoras = data
-        .filter(r => r.CATEGORIA.toLowerCase().includes('impresora')
-                   && (r.REFERENCIA.toLowerCase().includes(q)
-                       || r.NOMBRE.toLowerCase().includes(q)
-                       || (r.COMPATIBILIDADES || '').toLowerCase().includes(q)))
-        .map(r => r.NOMBRE)
-        .filter((v,i,a) => a.indexOf(v)===i);
-
-      // Filtrar consumibles: buscar en compatibilidades, referencia o nombre si categoria es Consumible
-      const consumibles = data
-        .filter(r => r.CATEGORIA.toLowerCase().includes('consumible')
-                   && (r.COMPATIBILIDADES.toLowerCase().includes(q)
-                       || r.REFERENCIA.toLowerCase().includes(q)
-                       || r.NOMBRE.toLowerCase().includes(q)))
-        .map(r => r.NOMBRE)
-        .filter((v,i,a) => a.indexOf(v)===i);
+      // Filtrar consumibles por categoría y coincidencias en REFERENCIA, NOMBRE o COMPATIBILIDADES
+      const consumibles = data.filter(item =>
+        item.CATEGORIA.toLowerCase().includes('consumible') && (
+          item.REFERENCIA.toLowerCase().includes(q) ||
+          item.NOMBRE.toLowerCase().includes(q) ||
+          (item.COMPATIBILIDADES || '').toLowerCase().includes(q)
+        )
+      ).map(item => item.NOMBRE);
 
       if (!impresoras.length && !consumibles.length) {
         err.textContent = `Código no encontrado: ${q}`;
       }
 
-      render(impresoras, iList);
-      render(consumibles, cList);
+      consumList.innerHTML = '';
+      impresList.innerHTML = '';
+      impresoras.forEach(name => {
+        const li = document.createElement('li'); li.textContent = name; impresList.appendChild(li);
+      });
+      consumibles.forEach(name => {
+        const li = document.createElement('li'); li.textContent = name; consumList.appendChild(li);
+      });
     }
   </script>
 </body>
