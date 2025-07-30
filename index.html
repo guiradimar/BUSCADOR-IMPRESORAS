@@ -24,7 +24,8 @@
     header {
       width: 100%; padding: 2rem 1rem;
       background: linear-gradient(90deg, #2196F3, #4CAF50);
-      text-align: center; box-shadow: var(--shadow);
+      box-shadow: var(--shadow);
+      text-align: center;
       display: flex; flex-direction: column; align-items: center;
     }
     header h1 {
@@ -32,8 +33,7 @@
       text-transform: uppercase; color: #000;
     }
     .searchbar {
-      display: flex; align-items: center;
-      width: 100%; max-width: 500px; margin-top: 1rem;
+      display: flex; width: 100%; max-width: 500px; margin-top: 1rem;
     }
     .searchbar input {
       flex: 1; padding: 0.75rem 1rem;
@@ -42,9 +42,8 @@
       font-size: 1rem; background: #fff; box-shadow: var(--shadow);
     }
     .searchbar button {
-      padding: 0.75rem 1rem;
-      border: 1px solid var(--input-border); border-left: none;
-      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 0.75rem 1rem; border: 1px solid var(--input-border);
+      border-left: none; border-radius: 0 var(--radius) var(--radius) 0;
       background: var(--btn-clear); color: #fff; cursor: pointer;
       box-shadow: var(--shadow);
     }
@@ -53,8 +52,8 @@
       min-height: 1.4em; text-align: center; visibility: hidden;
     }
     .grid {
-      display: flex; gap: 1rem; margin: 2rem;
-      width: 100%; max-width: 800px; justify-content: center;
+      display: flex; gap: 1rem; margin: 2rem; width: 100%;
+      max-width: 800px; justify-content: center;
     }
     .card {
       flex: 1 1 40%; background: #fff;
@@ -82,7 +81,7 @@
 </head>
 <body>
   <header>
-    <h1>BUSCADOR DE CONSUMIBLES E IMPRESORAS</h1>
+    <h1>Buscador de Consumibles e Impresoras</h1>
     <div class="searchbar">
       <input id="searchInput" type="text" placeholder="Ej. HP1200, 001R00623, Canon..." />
       <button id="clearBtn">Limpiar</button>
@@ -101,10 +100,39 @@
   </div>
   <button class="google-btn" id="googleBtn">Buscar en Google</button>
   <script>
-    let data = [];
+    function normalize(s) {
+      return String(s||'').toLowerCase().normalize('NFD')
+        .replace(/[̀-ͯ]/g,'')
+        .replace(/[^a-z0-9]/g,'');
+    }
+
+    let data = [], printerMap = {}, consumibleMap = {}, referenceMap = {};
     fetch('./consumibles_impresoras_full.json')
       .then(r => r.json())
-      .then(json => data = json)
+      .then(json => {
+        data = json;
+        data.forEach(item => {
+          const pr = normalize(item.IMPRESORAS);
+          const co = normalize(item.CONSUMIBLES);
+          const rf = normalize(item.REFERENCIA);
+          printerMap[pr] = printerMap[pr]||new Set();
+          consumibleMap[co] = consumibleMap[co]||new Set();
+          referenceMap[rf] = referenceMap[rf]||{impr:new Set(), cons:new Set()};
+
+          printerMap[pr].add(item.CONSUMIBLES);
+          consumibleMap[co].add(item.IMPRESORAS);
+
+          (item.COMPATIBILIDADES||[]).forEach(p => {
+            const pp = normalize(p);
+            printerMap[pp] = printerMap[pp]||new Set();
+            printerMap[pp].add(item.CONSUMIBLES);
+            consumibleMap[co].add(p);
+          });
+
+          referenceMap[rf].impr.add(item.IMPRESORAS);
+          referenceMap[rf].cons.add(item.CONSUMIBLES);
+        });
+      })
       .catch(() => {
         const e = document.getElementById('errorMsg');
         e.textContent = 'Error cargando datos'; e.style.visibility = 'visible';
@@ -117,61 +145,57 @@
           impresList = document.getElementById('impresorasList'),
           googleBtn = document.getElementById('googleBtn');
 
-    function normalize(s) {
-      return String(s||'').toLowerCase().normalize('NFD')
-        .replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,'').trim();
-    }
-
     clearBtn.onclick = () => {
-      inp.value = ''; err.style.visibility = 'hidden';
-      consumList.innerHTML = ''; impresList.innerHTML = '';
-      inp.focus();
+      inp.value=''; err.style.visibility='hidden';
+      consumList.innerHTML=''; impresList.innerHTML=''; inp.focus();
     };
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
+    inp.addEventListener('keydown', e => { if(e.key==='Enter') runSearch(); });
     googleBtn.onclick = () => {
-      const q = inp.value.trim();
-      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
+      let q = inp.value.trim();
+      if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank');
     };
 
     function runSearch() {
       const raw = inp.value.trim();
-      if (!raw) return;
-      err.style.visibility = 'hidden';
-      consumList.innerHTML = ''; impresList.innerHTML = '';
+      if(!raw) return;
+      err.style.visibility='hidden';
+      consumList.innerHTML=''; impresList.innerHTML='';
 
-      const q = normalize(raw);
-      const matches = data.filter(item =>
-        normalize(item.IMPRESORAS).includes(q) ||
-        normalize(item.CONSUMIBLES).includes(q) ||
-        normalize(item.REFERENCIA).includes(q)
-      );
-      if (!matches.length) {
-        err.textContent = `Código no encontrado: ${raw}`; err.style.visibility = 'visible';
+      const norm = normalize(raw);
+      const cons = new Set(), impr = new Set();
+
+      if(referenceMap[norm]) {
+        referenceMap[norm].cons.forEach(c=>cons.add(c.toUpperCase()));
+        referenceMap[norm].impr.forEach(i=>impr.add(i.toUpperCase()));
+      }
+      if(consumibleMap[norm]) {
+        consumibleMap[norm].forEach(i=>impr.add(i.toUpperCase()));
+        Object.keys(printerMap).forEach(p =>{
+          printerMap[p].forEach(c=>{
+            if(normalize(c)===norm) impr.add(p.toUpperCase());
+          });
+        });
+        data.filter(d=>normalize(d.CONSUMIBLES)===norm)
+            .forEach(d=>cons.add(d.CONSUMIBLES.toUpperCase()));
+      }
+      if(printerMap[norm]) {
+        printerMap[norm].forEach(c=>cons.add(c.toUpperCase()));
+        data.filter(d=>normalize(d.IMPRESORAS)===norm)
+            .forEach(d=>impr.add(d.IMPRESORAS.toUpperCase()));
+      }
+
+      if(!cons.size && !impr.size) {
+        err.textContent=`Código no encontrado: ${raw}`; err.style.visibility='visible';
         return;
       }
-      const consumiblesSet = new Set(), impresorasSet = new Set();
-      matches.forEach(item => {
-        if (normalize(item.IMPRESORAS).includes(q)) {
-          // searched printer
-          consumiblesSet.add(item.CONSUMIBLES.toUpperCase());
-          impresorasSet.add(item.IMPRESORAS.toUpperCase());
-          (item.COMPATIBILIDADES||[]).forEach(p => impresorasSet.add(p.toUpperCase()));
-        }
-        if (normalize(item.CONSUMIBLES).includes(q) || normalize(item.REFERENCIA).includes(q)) {
-          // searched consumible
-          consumiblesSet.add(item.CONSUMIBLES.toUpperCase());
-          impresorasSet.add(item.IMPRESORAS.toUpperCase());
-          (item.COMPATIBILIDADES||[]).forEach(p => impresorasSet.add(p.toUpperCase()));
-        }
-      });
-      consumiblesSet.forEach(name => {
+      cons.forEach(c=>{
         const li = document.createElement('li');
-        li.textContent = name;
+        li.textContent = c;
         consumList.appendChild(li);
       });
-      impresorasSet.forEach(name => {
+      impr.forEach(i=>{
         const li = document.createElement('li');
-        li.textContent = name;
+        li.textContent = i;
         impresList.appendChild(li);
       });
     }
