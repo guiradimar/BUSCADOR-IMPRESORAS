@@ -61,7 +61,7 @@
     async function loadData() {
       try {
         const [res1, res2] = await Promise.all([
-          fetch('./dataset_clean.json'),
+          fetch('./dataset_full_with_categoria.json'),
           fetch('./printers_map.json')
         ]);
         if(!res1.ok||!res2.ok) throw new Error();
