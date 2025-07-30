@@ -16,8 +16,6 @@
       border-radius:999px; outline:none; transition:0.2s;
       background:rgba(255,255,255,0.9); color:#333;
     }
-    .searchbar input::placeholder { color:#666; }
-    .searchbar input:focus { border-color:#fff; box-shadow:0 0 12px rgba(255,255,255,0.4); }
     .searchbar button {
       padding:12px 22px; border:none; border-radius:999px;
       background:#fff; color:#4285f4; font-weight:600; cursor:pointer;
@@ -28,23 +26,15 @@
     .message.error { color:#ff5252; font-weight:600; }
     main { max-width:1000px; margin:20px auto; padding:0 10px; }
     .grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
-    .panel {
-      border-radius:var(--radius); padding:20px;
-      box-shadow:var(--shadow); min-height:200px;
-      background:#fff; transition:transform .2s;
-    }
+    .panel { border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); min-height:200px; background:#fff; transition:transform .2s; }
     .panel:hover { transform:translateY(-4px); }
-    .panel h2 { margin-bottom:12px; font-size:1.3rem; }
     .panel.consumibles { border:2px solid #43a047; }
     .panel.impresoras { border:2px solid #e53935; }
+    .panel h2 { margin-bottom:12px; font-size:1.3rem; }
     .panel ul { list-style:disc inside; max-height:220px; overflow-y:auto; }
-    #btnGoogle {
-      display:block; margin:30px auto 0; padding:12px 30px; border:none;
-      border-radius:var(--radius);
-      background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58);
-      color:#fff; font-weight:600; cursor:pointer;
-      box-shadow:var(--shadow); transition:opacity .2s;
-    }
+    #btnGoogle { display:block; margin:30px auto 0; padding:12px 30px; border:none; border-radius:var(--radius);
+      background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58); color:#fff; font-weight:600; cursor:pointer;
+      box-shadow:var(--shadow); transition:opacity .2s; }
     #btnGoogle:hover { opacity:0.9; }
   </style>
 </head>
@@ -59,95 +49,87 @@
   </header>
   <main>
     <div class="grid">
-      <div class="panel consumibles">
-        <h2>CONSUMIBLES</h2>
-        <ul id="panelConsumibles"></ul>
-      </div>
-      <div class="panel impresoras">
-        <h2>IMPRESORAS</h2>
-        <ul id="panelImpresoras"></ul>
-      </div>
+      <div class="panel consumibles"><h2>CONSUMIBLES</h2><ul id="panelConsumibles"></ul></div>
+      <div class="panel impresoras"><h2>IMPRESORAS</h2><ul id="panelImpresoras"></ul></div>
     </div>
     <button id="btnGoogle">BUSCAR EN GOOGLE</button>
   </main>
   <script>
     const normalize = s => s ? String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'') : '';
-    let data = [], cols = [], refCol, nombreCol, compatCol;
+    let consumData = [], printerMap = [];
 
     async function loadData() {
       try {
-        const res = await fetch('./dataset_full_with_categoria.json');
-        if (!res.ok) throw new Error('No se pudo cargar JSON');
-        const js = await res.json();
-        data = js.rows; cols = js.columns;
-        refCol = cols.find(c => normalize(c).includes('referencia'));
-        nombreCol = cols.find(c => normalize(c).includes('nombre'));
-        compatCol = cols.find(c => normalize(c).includes('compatibil'));
-      } catch (e) {
+        const [res1, res2] = await Promise.all([
+          fetch('./dataset_clean.json'),
+          fetch('./printers_map.json')
+        ]);
+        if(!res1.ok||!res2.ok) throw new Error();
+        const js1 = await res1.json();
+        const js2 = await res2.json();
+        consumData = js1.rows || js1; // rows for original format
+        printerMap = js2;
+      } catch(e) {
         const err = document.getElementById('msgError');
-        err.textContent = 'Error cargando datos'; err.style.display = 'block';
+        err.textContent = 'Error cargando datos'; err.style.display='block';
       }
     }
 
     function clearPanels() {
-      document.getElementById('panelConsumibles').innerHTML = '';
-      document.getElementById('panelImpresoras').innerHTML = '';
-      document.getElementById('msgError').style.display = 'none';
+      document.getElementById('panelConsumibles').innerHTML='';
+      document.getElementById('panelImpresoras').innerHTML='';
+      document.getElementById('msgError').style.display='none';
     }
 
     function renderList(id, items) {
-      const ul = document.getElementById(id);
-      ul.innerHTML = '';
-      items.forEach(item => {
-        const li = document.createElement('li'); li.textContent = item; ul.appendChild(li);
-      });
+      const ul=document.getElementById(id);
+      ul.innerHTML='';
+      items.forEach(i=>{const li=document.createElement('li');li.textContent=i;ul.appendChild(li);});
     }
 
     function onSearch(e) {
-      if (e.key !== 'Enter') return;
-      const raw = document.getElementById('search').value.trim();
-      if (!raw) return;
+      if(e.key!=='Enter') return;
+      const raw=document.getElementById('search').value.trim();
+      if(!raw) return;
       clearPanels();
-      const term = normalize(raw);
+      const term=normalize(raw);
 
-      const consumRows = data.filter(r =>
-        (r[refCol] && normalize(r[refCol]).includes(term)) ||
-        (r[nombreCol] && normalize(r[nombreCol]).includes(term))
-      );
-      const printerRows = data.filter(r =>
-        r[compatCol] && normalize(r[compatCol]).includes(term)
-      );
-
-      const btn = document.getElementById('btnGoogle');
-      btn.onclick = () => window.open(`https://google.com/search?q=${encodeURIComponent(raw)}`,'_blank');
-
-      if (!consumRows.length && !printerRows.length) {
-        const err = document.getElementById('msgError');
-        err.textContent = `CÓDIGO NO ENCONTRADO: ${raw}`; err.style.display = 'block';
+      // Buscar impresoras en printerMap
+      const matchedPrinters = printerMap.filter(p=>normalize(p.printer).includes(term));
+      if(matchedPrinters.length) {
+        // muestra impresoras
+        const printers = matchedPrinters.map(p=>p.printer);
+        renderList('panelImpresoras', printers);
+        // muestra consumibles asociados
+        const consumibles = [...new Set(matchedPrinters.flatMap(p=>p.consumibles))];
+        renderList('panelConsumibles', consumibles);
         return;
       }
 
-      if (printerRows.length && !consumRows.length) {
-        renderList('panelImpresoras', [raw]);
-        const cons = [...new Set(printerRows.map(r => r[nombreCol]).filter(Boolean))];
-        renderList('panelConsumibles', cons);
+      // Si no hay impresora, buscar consumibles y derivar impresoras
+      const matchedCons = consumData.filter(r=>
+        (r.referencia&&normalize(r.referencia).includes(term))||
+        (r.nombre&&normalize(r.nombre).includes(term))
+      );
+      if(matchedCons.length) {
+        const consNames = [...new Set(matchedCons.map(r=>r.nombre))];
+        renderList('panelConsumibles', consNames);
+        // buscar impresoras en printerMap que incluyan esos consumibles
+        const printers = [...new Set(
+          printerMap.filter(p=>consNames.some(cn=>p.consumibles.includes(cn))).map(p=>p.printer)
+        )];
+        renderList('panelImpresoras', printers);
         return;
       }
 
-      const consNames = [...new Set(consumRows.map(r => r[nombreCol]).filter(Boolean))];
-      renderList('panelConsumibles', consNames);
-      const printers = new Set();
-      consumRows.forEach(r => {
-        r[compatCol]?.split(',').forEach(c => printers.add(c.trim()));
-      });
-      renderList('panelImpresoras', [...printers]);
+      // Sin resultados
+      const err=document.getElementById('msgError');
+      err.textContent=`CÓDIGO NO ENCONTRADO: ${raw}`; err.style.display='block';
     }
 
-    document.getElementById('search').addEventListener('keydown', onSearch);
-    document.getElementById('clear').addEventListener('click', () => {
-      document.getElementById('search').value = ''; clearPanels();
-    });
-    window.addEventListener('load', () => { loadData(); clearPanels(); });
+    document.getElementById('search').addEventListener('keydown',onSearch);
+    document.getElementById('clear').addEventListener('click',()=>{document.getElementById('search').value='';clearPanels();});
+    window.addEventListener('load',()=>{loadData();clearPanels();});
   </script>
 </body>
 </html>
