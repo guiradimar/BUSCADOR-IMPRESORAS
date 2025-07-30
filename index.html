@@ -13,7 +13,7 @@
     .searchbar { margin-top: 1rem; display: flex; justify-content: center; align-items: center; }
     .searchbar input { width: 300px; padding: 0.75rem 1rem; border: none; border-radius: var(--radius); font-size: 1rem; }
     .searchbar button { margin-left: 1rem; padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius); background: #fff; color: #4285F4; font-size: 1rem; cursor: pointer; box-shadow: var(--shadow); }
-    .error { text-align: center; color: #E53935; margin-top: 0.5rem; }
+    .error { text-align: center; color: #E53935; margin-top: 0.5rem; min-height: 1.2em; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1000px; margin: 2rem auto; }
     .card { background: #fff; border-radius: var(--radius); padding: 1rem; box-shadow: var(--shadow); min-height: 200px; overflow-y: auto; }
     .card h2 { margin-top: 0; font-size: 1.25rem; }
@@ -51,12 +51,20 @@
       .then(json => data = json)
       .catch(() => document.getElementById('errorMsg').textContent = 'Error cargando datos');
 
-    const inp = document.getElementById('searchInput');
-    const clearBtn = document.getElementById('clearBtn');
-    const err = document.getElementById('errorMsg');
+    const inp        = document.getElementById('searchInput');
+    const clearBtn   = document.getElementById('clearBtn');
+    const err        = document.getElementById('errorMsg');
     const consumList = document.getElementById('consumiblesList');
     const impresList = document.getElementById('impresorasList');
-    const googleBtn = document.getElementById('googleBtn');
+    const googleBtn  = document.getElementById('googleBtn');
+
+    function normalize(str) {
+      return str
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-zA-Z0-9 ]/g, '')
+        .toLowerCase()
+        .trim();
+    }
 
     function clearAll() {
       inp.value = '';
@@ -76,38 +84,59 @@
     });
 
     function search() {
-      const q = inp.value.trim().toLowerCase();
-      if (!q) return;
+      const raw = inp.value;
+      if (!raw) return;
+
+      const q = normalize(raw);
       err.textContent = '';
-      // Filtrar impresoras por categoría y coincidencias en REFERENCIA, NOMBRE o COMPATIBILIDADES
-      const impresoras = data.filter(item =>
-        item.CATEGORIA.toLowerCase().includes('impresora') && (
-          item.REFERENCIA.toLowerCase().includes(q) ||
-          item.NOMBRE.toLowerCase().includes(q) ||
-          (item.COMPATIBILIDADES || '').toLowerCase().includes(q)
-        )
-      ).map(item => item.NOMBRE);
 
-      // Filtrar consumibles por categoría y coincidencias en REFERENCIA, NOMBRE o COMPATIBILIDADES
-      const consumibles = data.filter(item =>
-        item.CATEGORIA.toLowerCase().includes('consumible') && (
-          item.REFERENCIA.toLowerCase().includes(q) ||
-          item.NOMBRE.toLowerCase().includes(q) ||
-          (item.COMPATIBILIDADES || '').toLowerCase().includes(q)
-        )
-      ).map(item => item.NOMBRE);
-
-      if (!impresoras.length && !consumibles.length) {
-        err.textContent = `Código no encontrado: ${q}`;
+      function matchesField(field) {
+        if (!field) return false;
+        if (Array.isArray(field)) {
+          return field.some(f => normalize(f).includes(q));
+        } else {
+          return normalize(field).includes(q);
+        }
       }
+
+      const impresoras = data
+        .filter(item =>
+          item.CATEGORIA === 'Impresora' &&
+          (
+            matchesField(item.REFERENCIA) ||
+            matchesField(item.NOMBRE) ||
+            matchesField(item.COMPATIBILIDADES)
+          )
+        )
+        .map(item => item.NOMBRE);
+
+      const consumibles = data
+        .filter(item =>
+          item.CATEGORIA === 'Consumible' &&
+          (
+            matchesField(item.REFERENCIA) ||
+            matchesField(item.NOMBRE) ||
+            matchesField(item.COMPATIBILIDADES)
+          )
+        )
+        .map(item => item.NOMBRE);
 
       consumList.innerHTML = '';
       impresList.innerHTML = '';
+
+      if (impresoras.length === 0 && consumibles.length === 0) {
+        err.textContent = `Código no encontrado: ${raw}`;
+        return;
+      }
       impresoras.forEach(name => {
-        const li = document.createElement('li'); li.textContent = name; impresList.appendChild(li);
+        const li = document.createElement('li');
+        li.textContent = name;
+        impresList.appendChild(li);
       });
       consumibles.forEach(name => {
-        const li = document.createElement('li'); li.textContent = name; consumList.appendChild(li);
+        const li = document.createElement('li');
+        li.textContent = name;
+        consumList.appendChild(li);
       });
     }
   </script>
