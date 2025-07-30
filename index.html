@@ -15,73 +15,22 @@
       --btn-clear: #0F9D58;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', Tahoma, sans-serif;
-      background: #f5f5f5; color: #333;
-      display: flex; flex-direction: column; align-items: center;
-      min-height: 100vh;
-    }
-    header {
-      width: 100%; padding: 2rem 1rem;
-      background: linear-gradient(90deg, #2196F3, #4CAF50);
-      text-align: center; box-shadow: var(--shadow);
-    }
-    header h1 {
-      font-size: 2rem; margin-bottom: 1rem;
-      text-transform: uppercase; color: #000;
-    }
-    .searchbar {
-      display: flex; align-items: center; margin-top: 1rem;
-    }
-    .searchbar input {
-      width: 300px; padding: 0.75rem 1rem;
-      border: 1px solid var(--input-border);
-      border-radius: var(--radius) 0 0 var(--radius);
-      font-size: 1rem; background: #fff; box-shadow: var(--shadow);
-    }
-    .searchbar input:focus {
-      outline: none; background: #e0f7fa;
-    }
-    .searchbar button {
-      padding: 0.75rem 1rem;
-      border: 1px solid var(--input-border);
-      border-left: none;
-      border-radius: 0 var(--radius) var(--radius) 0;
-      background: var(--btn-clear); color: #fff; cursor: pointer;
-      box-shadow: var(--shadow);
-    }
-    .error {
-      margin-top: 0.5rem; color: var(--error-color);
-      min-height: 1.4em; text-align: center; visibility: hidden;
-    }
-    .grid {
-      display: flex; gap: 1rem; margin: 2rem;
-      width: 100%; max-width: 800px; justify-content: center;
-    }
-    .card {
-      flex: 1 1 40%; background: #fff;
-      border-radius: var(--radius); box-shadow: var(--shadow);
-      padding: 1rem; max-height: 300px; overflow-y: auto;
-    }
-    .card h2 {
-      font-size: 1.25rem; margin-bottom: 0.5rem;
-      text-transform: uppercase; color: #000;
-    }
-    .card ul {
-      list-style: none; padding: 0; margin: 0;
-    }
-    .card li {
-      padding: 0.5rem 0; border-bottom: 1px solid #ddd;
-      text-transform: uppercase; font-size: 0.95rem;
-    }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; color: #333; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    header { width: 100%; padding: 2rem 1rem; background: linear-gradient(90deg, #2196F3, #4CAF50); text-align: center; box-shadow: var(--shadow); }
+    header h1 { font-size: 2rem; margin-bottom: 1rem; text-transform: uppercase; color: #000; }
+    .searchbar { display: flex; align-items: center; margin-top: 1rem; }
+    .searchbar input { width: 300px; padding: 0.75rem 1rem; border: 1px solid var(--input-border); border-radius: var(--radius) 0 0 var(--radius); font-size: 1rem; background: #fff; box-shadow: var(--shadow); }
+    .searchbar input:focus { outline: none; background: #e0f7fa; }
+    .searchbar button { padding: 0.75rem 1rem; border: 1px solid var(--input-border); border-left: none; border-radius: 0 var(--radius) var(--radius) 0; background: var(--btn-clear); color: #fff; cursor: pointer; box-shadow: var(--shadow); }
+    .error { margin-top: 0.5rem; color: var(--error-color); min-height: 1.4em; text-align: center; visibility: hidden; }
+    .grid { display: flex; gap: 1rem; margin: 2rem; width: 100%; max-width: 800px; justify-content: center; }
+    .card { flex: 1 1 40%; background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 1rem; max-height: 300px; overflow-y: auto; }
+    .card h2 { font-size: 1.25rem; margin-bottom: 0.5rem; text-transform: uppercase; color: #000; }
+    .card ul { list-style: none; padding: 0; margin: 0; }
+    .card li { padding: 0.5rem 0; border-bottom: 1px solid #ddd; text-transform: uppercase; font-size: 0.95rem; }
     #consumiblesCard { background: var(--color-consumable); }
     #impresorasCard { background: var(--color-printer); }
-    .google-btn {
-      margin: 1rem auto 2rem;
-      padding: 0.75rem 2rem; border: none; border-radius: var(--radius);
-      background: #DB4437; color: #fff; font-size: 1rem;
-      cursor: pointer; box-shadow: var(--shadow);
-    }
+    .google-btn { margin: 1rem auto 2rem; padding: 0.75rem 2rem; border: none; border-radius: var(--radius); background: #DB4437; color: #fff; font-size: 1rem; cursor: pointer; box-shadow: var(--shadow); }
   </style>
 </head>
 <body>
@@ -93,96 +42,58 @@
     </div>
     <div class="error" id="errorMsg"></div>
   </header>
-
   <div class="grid">
     <div class="card" id="consumiblesCard">
-      <h2>Consumibles</h2>
-      <ul id="consumiblesList"></ul>
+      <h2>Consumibles</h2><ul id="consumiblesList"></ul>
     </div>
     <div class="card" id="impresorasCard">
-      <h2>Impresoras</h2>
-      <ul id="impresorasList"></ul>
+      <h2>Impresoras</h2><ul id="impresorasList"></ul>
     </div>
   </div>
-
   <button class="google-btn" id="googleBtn">Buscar en Google</button>
-
   <script>
     let data = [];
     fetch('./consumibles_impresoras_full.json')
       .then(res => res.json())
       .then(json => data = json)
       .catch(() => {
-        const e = document.getElementById('errorMsg');
-        e.textContent = 'Error cargando datos';
-        e.style.visibility = 'visible';
+        let e = document.getElementById('errorMsg');
+        e.textContent='Error cargando datos';
+        e.style.visibility='visible';
       });
-
-    const inp = document.getElementById('searchInput');
-    const clearBtn = document.getElementById('clearBtn');
-    const err = document.getElementById('errorMsg');
-    const consumList = document.getElementById('consumiblesList');
-    const impresList = document.getElementById('impresorasList');
-    const googleBtn = document.getElementById('googleBtn');
-
-    function normalize(str) {
-      return String(str||'').toLowerCase().normalize('NFD')
-        .replace(/[̀-ͯ]/g,'')
-        .replace(/[^a-z0-9 ]/g,'')
-        .trim();
-    }
-
-    clearBtn.onclick = () => {
-      inp.value = '';
-      err.style.visibility = 'hidden';
-      consumList.innerHTML = '';
-      impresList.innerHTML = '';
-      inp.focus();
-    };
-
-    inp.onkeydown = e => {
-      if (e.key === 'Enter') runSearch();
-    };
-
-    googleBtn.onclick = () => {
-      const q = inp.value.trim();
-      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
-    };
-
-    function runSearch() {
-      const raw = inp.value.trim();
-      if (!raw) return;
-      err.style.visibility = 'hidden';
-      consumList.innerHTML = '';
-      impresList.innerHTML = '';
-
-      const q = normalize(raw);
-      const rows = data.filter(item =>
-        normalize(item.REFERENCIA).includes(q) ||
-        normalize(item.CONSUMIBLES).includes(q) ||
-        normalize(item.IMPRESORAS).includes(q) ||
-        normalize(item.DESCRIPCION).includes(q)
-      );
-
-      if (!rows.length) {
-        err.textContent = `Código no encontrado: ${raw}`;
-        err.style.visibility = 'visible';
-        return;
+    const inp = document.getElementById('searchInput'),
+          clearBtn = document.getElementById('clearBtn'),
+          err = document.getElementById('errorMsg'),
+          consumList = document.getElementById('consumiblesList'),
+          impresList = document.getElementById('impresorasList'),
+          googleBtn = document.getElementById('googleBtn');
+    function normalize(str){ return String(str||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,'').trim(); }
+    clearBtn.onclick = () => { inp.value=''; err.style.visibility='hidden'; consumList.innerHTML=''; impresList.innerHTML=''; inp.focus(); };
+    inp.onkeydown = e => { if(e.key==='Enter') runSearch(); };
+    googleBtn.onclick = () => { let q=inp.value.trim(); if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank'); };
+    function runSearch(){
+      let raw=inp.value.trim(); if(!raw) return;
+      err.style.visibility='hidden'; consumList.innerHTML=''; impresList.innerHTML='';
+      let q=normalize(raw), cons=new Set(), impr=new Set();
+      data.forEach(item=>{
+        // match printer search
+        if(normalize(item.IMPRESORAS).includes(q)){
+          impr.add(item.IMPRESORAS.toUpperCase());
+          if(item.CONSUMIBLES) cons.add(item.CONSUMIBLES.toUpperCase());
+        }
+        // match consumible or reference search
+        if(normalize(item.CONSUMIBLES).includes(q) || normalize(item.REFERENCIA).includes(q)){
+          cons.add(item.CONSUMIBLES.toUpperCase());
+          // add all compatible printers
+          (item.COMPATIBILIDADES||[]).forEach(p=>impr.add(p.toUpperCase()));
+        }
+      });
+      if(!cons.size && !impr.size){
+        err.textContent=`Código no encontrado: ${raw}`;
+        err.style.visibility='visible'; return;
       }
-
-      Array.from(new Set(rows.map(r => r.CONSUMIBLES.toUpperCase())))
-        .forEach(name => {
-          const li = document.createElement('li');
-          li.textContent = name;
-          consumList.appendChild(li);
-        });
-
-      Array.from(new Set(rows.map(r => r.IMPRESORAS.toUpperCase())))
-        .forEach(name => {
-          const li = document.createElement('li');
-          li.textContent = name;
-          impresList.appendChild(li);
-        });
+      cons.forEach(name=>{ let li=document.createElement('li'); li.textContent=name; consumList.appendChild(li); });
+      impr.forEach(name=>{ let li=document.createElement('li'); li.textContent=name; impresList.appendChild(li); });
     }
   </script>
 </body>
