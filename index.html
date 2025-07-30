@@ -1,181 +1,130 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BUSCADOR CONSUMIBLES/IMPRESORAS</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f0f4f8;
+      background-color: #f5f5f5;
+      color: #333;
       text-align: center;
+      padding: 20px;
     }
-
     h1 {
-      color: #003366;
-      margin: 30px 0 10px;
-      font-size: 32px;
+      color: #222;
     }
-
     input {
       width: 60%;
-      padding: 10px;
+      padding: 12px;
       font-size: 16px;
-      margin: 10px auto;
-      border-radius: 10px;
-      border: 2px solid #3399ff;
+      margin-bottom: 20px;
+      border: 2px solid #888;
+      border-radius: 8px;
     }
-
     .results {
       display: flex;
-      justify-content: center;
-      margin-top: 20px;
-      gap: 20px;
+      justify-content: space-around;
       flex-wrap: wrap;
+      margin-top: 20px;
     }
-
-    .box {
-      width: 40%;
-      background-color: white;
+    .result-box {
+      width: 45%;
+      min-height: 150px;
+      background-color: #ffffff;
+      padding: 15px;
       border-radius: 10px;
-      box-shadow: 0 0 10px #ccc;
-      padding: 20px;
-      text-align: left;
-      min-width: 300px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      margin: 10px 0;
+      overflow-y: auto;
     }
-
-    .consumibles {
-      border-top: 5px solid #00aa88;
-    }
-
-    .impresoras {
-      border-top: 5px solid #cc3333;
-    }
-
-    h2 {
-      margin-top: 0;
+    .result-box h2 {
       text-transform: uppercase;
+      color: #007BFF;
     }
-
-    .item {
-      margin-bottom: 20px;
+    .not-found {
+      margin-top: 20px;
     }
-
-    .google-button {
-      margin-top: 30px;
-      padding: 12px 24px;
-      background-color: #007bff;
-      color: white;
-      font-weight: bold;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
+    .google-btn {
       display: none;
+      margin-top: 15px;
+      background-color: #dc3545;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-
   <h1>BUSCADOR CONSUMIBLES/IMPRESORAS</h1>
-  <input type="text" id="searchBox" placeholder="Busca por marca, referencia, nombre, descripción, capacidad..." oninput="buscar()" />
+  <input type="text" id="searchBox" placeholder="Escribe una referencia, modelo o marca...">
 
   <div class="results">
-    <div class="box consumibles">
+    <div class="result-box" id="consumibles">
       <h2>CONSUMIBLES</h2>
-      <div id="consumiblesResult">No hay consumibles que coincidan.</div>
+      <div id="consumiblesList"></div>
     </div>
-    <div class="box impresoras">
+    <div class="result-box" id="impresoras">
       <h2>IMPRESORAS</h2>
-      <div id="impresorasResult">No hay impresoras que coincidan.</div>
+      <div id="impresorasList"></div>
     </div>
   </div>
 
-  <button class="google-button" id="googleBtn" onclick="buscarEnGoogle()">Buscar en Google</button>
+  <div class="not-found">
+    <button id="googleSearchBtn" class="google-btn">Buscar en Google</button>
+  </div>
 
   <script>
-    let data = [];
+    let dataGlobal = { consumibles: [], impresoras: [] };
 
-    fetch('compatibilidades_completo.json')
-      .then(res => res.json())
-      .then(json => {
-        data = json;
-        console.log("JSON cargado con", data.length, "entradas");
-      })
-      .catch(err => {
-        console.error("Error al cargar el JSON:", err);
+    fetch("compatibilidades_completo.json")
+      .then(response => response.json())
+      .then(data => {
+        dataGlobal = data;
+        console.log("JSON cargado con ", data.consumibles.length, "consumibles y", data.impresoras.length, "impresoras");
       });
 
-    function normalizar(texto) {
-      return texto?.toLowerCase().replace(/\s+/g, '').replace(/[^\w\d]/g, '') || '';
-    }
+    const normalizar = texto => texto.toLowerCase().replace(/[^a-z0-9]/gi, "");
 
-    function buscar() {
-      const q = normalizar(document.getElementById("searchBox").value.trim());
-      const consumiblesDiv = document.getElementById("consumiblesResult");
-      const impresorasDiv = document.getElementById("impresorasResult");
-      const googleBtn = document.getElementById("googleBtn");
+    document.getElementById("searchBox").addEventListener("input", () => {
+      const input = normalizar(document.getElementById("searchBox").value);
+      const consumibles = dataGlobal.consumibles.filter(item =>
+        normalizar(item.referencia + item.nombre + item.compatibilidades).includes(input)
+      );
+      const impresoras = dataGlobal.impresoras.filter(item =>
+        normalizar(item.referencia + item.nombre + item.descripcion).includes(input)
+      );
 
-      if (!q) {
-        consumiblesDiv.innerHTML = "No hay consumibles que coincidan.";
-        impresorasDiv.innerHTML = "No hay impresoras que coincidan.";
+      mostrarResultados(consumibles, impresoras, input);
+    });
+
+    function mostrarResultados(consumibles, impresoras, input) {
+      const cList = document.getElementById("consumiblesList");
+      const iList = document.getElementById("impresorasList");
+      const googleBtn = document.getElementById("googleSearchBtn");
+
+      cList.innerHTML = "";
+      iList.innerHTML = "";
+
+      if (consumibles.length === 0 && impresoras.length === 0 && input.length > 2) {
+        googleBtn.style.display = "inline-block";
+        googleBtn.onclick = () => {
+          window.open(`https://www.google.com/search?q=${input}`, '_blank');
+        };
+      } else {
         googleBtn.style.display = "none";
-        return;
       }
 
-      const resultadosConsumibles = [];
-      const resultadosImpresoras = new Set();
-
-      data.forEach(entry => {
-        const campos = [
-          entry.NOMBRE, entry.REFERENCIA, entry.DESCRIPCION,
-          entry.CAPACIDAD, entry.REFERENCIA_NORMALIZADA,
-          entry.NOMBRE_NORMALIZADO
-        ].join(' ').toLowerCase();
-
-        const compat = (entry.COMPATIBILIDADES_NORMALIZADAS || '').toLowerCase();
-
-        if (campos.includes(q) || compat.includes(q)) {
-          resultadosConsumibles.push(entry);
-          if (entry.COMPATIBILIDADES_NORMALIZADAS) {
-            entry.COMPATIBILIDADES_NORMALIZADAS.split(',').forEach(modelo => {
-              if (normalizar(modelo).includes(q)) {
-                resultadosImpresoras.add(modelo.trim());
-              }
-            });
-          }
-        }
+      consumibles.forEach(item => {
+        cList.innerHTML += `<p><strong>${item.referencia}</strong> - ${item.nombre} - ${item.capacidad || ''} - ${item.precio || ''}</p>`;
       });
 
-      consumiblesDiv.innerHTML = resultadosConsumibles.length
-        ? resultadosConsumibles.map(c =>
-            `<div class="item">
-              <strong>${c.NOMBRE}</strong><br>
-              Marca: ${extraerMarca(c.NOMBRE)}<br>
-              Ref: ${c.REFERENCIA}<br>
-              Capacidad: ${c.CAPACIDAD || "N/D"}<br>
-              Precio: ${c.PRECIO || "N/D"}<br>
-              Descripción: ${c.DESCRIPCION}
-            </div>`
-          ).join('')
-        : "No hay consumibles que coincidan.";
-
-      impresorasDiv.innerHTML = resultadosImpresoras.size
-        ? [...resultadosImpresoras].map(i => `<div class="item">${i}</div>`).join('')
-        : "No hay impresoras que coincidan.";
-
-      googleBtn.style.display = (resultadosConsumibles.length === 0 && resultadosImpresoras.size === 0) ? "inline-block" : "none";
-    }
-
-    function extraerMarca(nombre) {
-      const match = nombre?.match(/^(HP|Canon|Epson|Brother|Xerox|Samsung)/i);
-      return match ? match[0] : "Desconocida";
-    }
-
-    function buscarEnGoogle() {
-      const q = document.getElementById("searchBox").value.trim();
-      if (q) {
-        window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank');
-      }
+      impresoras.forEach(item => {
+        iList.innerHTML += `<p><strong>${item.referencia}</strong> - ${item.nombre}<br><small>${item.descripcion}</small></p>`;
+      });
     }
   </script>
 </body>
