@@ -100,22 +100,45 @@
         }
       });
 
-      // 2) Impresora/Compatibilidad → muestra impresora principal y consumibles compatibles
-      data.forEach(item => {
-        if (normalize(item.IMPRESORAS).includes(term) ||
-            item.COMPATIBILIDADES.some(c => normalize(c).includes(term))) {
-          if (!seenI.has(item.IMPRESORAS)) {
-            seenI.add(item.IMPRESORAS);
-            impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`;
-          }
-          if (!seenC.has(item.CONSUMIBLES)) {
-            seenC.add(item.CONSUMIBLES);
-            consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
+      // 2) Impresora/Compatibilidad → muestra impresora buscada y sus consumibles
+      // Primero, identificar impresoras que coinciden
+      const printers = data.reduce((acc, item) => {
+        const imp = normalize(item.IMPRESORAS);
+        const isMain = imp.includes(term);
+        const isCompat = item.COMPATIBILIDADES.some(c => normalize(c).includes(term));
+        if (isMain || isCompat) {
+          // si coincide en main, usar el nombre principal; si coincide en compat, usar la cadena de compatibilidad exacta
+          if (isMain) acc.add(item.IMPRESORAS);
+          if (isCompat) {
+            item.COMPATIBILIDADES.forEach(c => {
+              if (normalize(c).includes(term)) acc.add(c);
+            });
           }
         }
+        return acc;
+      }, new Set());
+      // Mostrar impresoras
+      printers.forEach(name => {
+        if (!seenI.has(name)) {
+          seenI.add(name);
+          impUL.innerHTML += `<li>${name}</li>`;
+        }
+      });
+      // Mostrar consumibles compatibles con esas impresoras
+      data.forEach(item => {
+        // si alguna de las compatibilidades coincide con la impresora buscada
+        const compsNorm = item.COMPATIBILIDADES.map(c => normalize(c));
+        printers.forEach(pName => {
+          if (compsNorm.includes(normalize(pName))) {
+            if (!seenC.has(item.CONSUMIBLES)) {
+              seenC.add(item.CONSUMIBLES);
+              consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
+            }
+          }
+        });
       });
 
-      if (seenC.size === 0 && seenI.size === 0) {
+      if (seenC.size === 0 && seenI.size === 0) { && seenI.size === 0) {
         err.textContent = 'Código no encontrado: ' + inp.value;
         err.style.visibility = 'visible';
       }
