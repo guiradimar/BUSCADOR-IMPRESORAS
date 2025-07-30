@@ -76,7 +76,7 @@
 
     async function loadData() {
       try {
-        const res = await fetch('dataset_with_categoria.json');
+        const res = await fetch('./dataset_full_with_categoria.json');
         if (!res.ok) throw new Error();
         const js = await res.json();
         data = js.rows; cols = js.columns;
