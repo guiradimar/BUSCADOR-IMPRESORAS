@@ -53,7 +53,7 @@
       .then(res => res.json())
       .then(json => data = json)
       .catch(() => {
-        let e = document.getElementById('errorMsg');
+        const e = document.getElementById('errorMsg');
         e.textContent = 'Error cargando datos';
         e.style.visibility = 'visible';
       });
@@ -65,11 +65,10 @@
           impresList = document.getElementById('impresorasList'),
           googleBtn = document.getElementById('googleBtn');
 
-    function normalize(str){
-      return String(str||'').toLowerCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g,'')
-        .replace(/[^a-z0-9 ]/g,'')
-        .trim();
+    function normalize(str) {
+      return String(str || '').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9 ]/g, '').trim();
     }
 
     clearBtn.onclick = () => {
@@ -87,7 +86,7 @@
       if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
     };
 
-    function runSearch(){
+    function runSearch() {
       const raw = inp.value.trim();
       if (!raw) return;
       err.style.visibility = 'hidden';
@@ -99,15 +98,25 @@
       const impresorasSet = new Set();
 
       data.forEach(item => {
-        // Si coincide referencia o consumible
-        if (normalize(item.REFERENCIA).includes(q) || normalize(item.CONSUMIBLES).includes(q)) {
+        const normImpr = normalize(item.IMPRESORAS);
+        // Match direct printer name
+        if (normImpr.includes(q)) {
+          impresorasSet.add(item.IMPRESORAS.toUpperCase());
           if (item.CONSUMIBLES) consumiblesSet.add(item.CONSUMIBLES.toUpperCase());
-          (item.COMPATIBILIDADES || []).forEach(p => impresorasSet.add(p.toUpperCase()));
         }
-        // Si coincide con impresora en la lista de compatibilidades
-        if ((item.COMPATIBILIDADES || []).some(p => normalize(p).includes(q))) {
-          if (item.CONSUMIBLES) consumiblesSet.add(item.CONSUMIBLES.toUpperCase());
-          impresorasSet.add(raw.toUpperCase());
+        // Match in compatibilities list
+        (item.COMPATIBILIDADES || []).forEach(p => {
+          if (normalize(p).includes(q)) {
+            // add consumible for this printer compatibility
+            if (item.CONSUMIBLES) consumiblesSet.add(item.CONSUMIBLES.toUpperCase());
+            impresorasSet.add(p.toUpperCase());
+          }
+        });
+        // Match consumible or reference
+        if (normalize(item.REFERENCIA).includes(q) || normalize(item.CONSUMIBLES).includes(q)) {
+          consumiblesSet.add(item.CONSUMIBLES.toUpperCase());
+          // all compatible printers
+          (item.COMPATIBILIDADES || []).forEach(p => impresorasSet.add(p.toUpperCase()));
         }
       });
 
