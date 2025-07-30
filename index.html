@@ -47,6 +47,7 @@
   <script>
     const normalize = s => s ? String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase() : '';
     let data = [];
+
     async function loadData() {
       try {
         const res = await fetch('dataset_full_with_consumibles.json');
@@ -54,57 +55,66 @@
         const js = await res.json();
         data = js.rows || js;
       } catch (e) {
-        const msg = document.getElementById('msgError');
-        msg.textContent = 'Error cargando datos'; msg.style.display = 'block';
+        const err = document.getElementById('msgError');
+        err.textContent = 'Error cargando datos'; err.style.display = 'block';
       }
     }
+
     function clearPanels() {
-      ['panelConsumibles','panelImpresoras'].forEach(id=>{
-        document.getElementById(id).innerHTML = '';
-      });
+      document.getElementById('panelConsumibles').innerHTML = '';
+      document.getElementById('panelImpresoras').innerHTML = '';
       document.getElementById('msgError').style.display = 'none';
     }
+
     function renderList(id, items) {
       const ul = document.getElementById(id);
       ul.innerHTML = '';
-      items.forEach(i=>{
+      items.forEach(item => {
         const li = document.createElement('li');
-        li.textContent = i;
+        li.textContent = item;
         ul.appendChild(li);
       });
     }
+
     function searchTerm(raw) {
       const term = normalize(raw);
       clearPanels();
       if (!term) return;
       const btn = document.getElementById('btnGoogle');
-      btn.onclick = ()=> window.open(`https://www.google.com/search?q=${encodeURIComponent(raw)}`,'_blank');
-      // Impresoras primero
-      const impRows = data.filter(r => r.CONSUMIBLES_COMPATIBLES && normalize(r.CONSUMIBLES_COMPATIBLES).includes(term));
+      btn.onclick = () => window.open(`https://www.google.com/search?q=${encodeURIComponent(raw)}`, '_blank');
+
+      // Buscar impresoras (compatibles)
+      const impRows = data.filter(r => r.CONSUMIBLES_COMPATIBLES && r.CONSUMIBLES_COMPATIBLES.some(c => normalize(c).includes(term)));
       if (impRows.length) {
-        const printers = [...new Set(impRows.map(r=>r.IMPRESORAS))].filter(Boolean);
+        const printers = [...new Set(impRows.flatMap(r => r.compatList))];
         renderList('panelImpresoras', printers);
-        const consum = [...new Set(impRows.flatMap(r=>r.CONSUMIBLES_COMPATIBLES))];
+        const consum = [...new Set(impRows.flatMap(r => r.CONSUMIBLES_COMPATIBLES))];
         renderList('panelConsumibles', consum);
         return;
       }
-      // Consumibles
-      const consRows = data.filter(r => 
+
+      // Buscar consumibles
+      const consRows = data.filter(r =>
         (r.REFERENCIA && normalize(r.REFERENCIA).includes(term)) ||
-        (r.NOMBRE && normalize(r.NOMBRE).includes(term)));
+        (r.NOMBRE && normalize(r.NOMBRE).includes(term))
+      );
       if (consRows.length) {
-        const cons = [...new Set(consRows.map(r=>r.NOMBRE))];
+        const cons = [...new Set(consRows.map(r => r.NOMBRE))];
         renderList('panelConsumibles', cons);
-        const printers = [...new Set(consRows.flatMap(r=>r.IMPRESORAS || []))];
+        const printers = [...new Set(consRows.flatMap(r => r.compatList))];
         renderList('panelImpresoras', printers);
         return;
       }
-      const msg = document.getElementById('msgError');
-      msg.textContent = `Código no encontrado: ${raw}`; msg.style.display = 'block';
+
+      // Error
+      const err = document.getElementById('msgError');
+      err.textContent = `Código no encontrado: ${raw}`;
+      err.style.display = 'block';
     }
-    document.getElementById('search').addEventListener('keydown', e=>{ if(e.key==='Enter') searchTerm(e.target.value.trim()); });
-    document.getElementById('clear').addEventListener('click', ()=>{document.getElementById('search').value='';clearPanels();});
-    window.addEventListener('load', ()=>{ loadData().then(clearPanels); });
+
+    document.getElementById('search').addEventListener('keydown', e => { if (e.key==='Enter') searchTerm(e.target.value.trim()); });
+    document.getElementById('clear').addEventListener('click', () => { document.getElementById('search').value = ''; clearPanels(); });
+    window.addEventListener('load', () => { loadData().then(clearPanels); });
   </script>
 </body>
 </html>
