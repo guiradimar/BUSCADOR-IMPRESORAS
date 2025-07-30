@@ -118,7 +118,6 @@
         const codes = r[compatCol].split(',').map(c => normalize(c.trim()));
         return codes.includes(term);
       });
-      const printerFilt = data.filter(r => r[compatCol] && normalize(r[compatCol]).includes(term));
       if (printerFilt.length) return renderPrinterSearch(printerFilt);
 
       // Buscar consumible
