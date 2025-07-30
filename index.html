@@ -76,6 +76,7 @@
 
     function handleSearch() {
       const term = normalize(inp.value);
+      // reset
       err.textContent = '';
       err.style.visibility = 'hidden';
       consUL.innerHTML = '';
@@ -84,15 +85,15 @@
 
       const seenC = new Set(), seenI = new Set();
 
-      // 1) Búsqueda de consumible/toner (REFERENCIA o CONSUMIBLES)
+      // 1) Si buscas cartucho/toner por REFERENCIA o CONSUMIBLES
       data.forEach(item => {
         if (normalize(item.REFERENCIA).includes(term) || normalize(item.CONSUMIBLES).includes(term)) {
-          // Mostrar consumible
+          // mostrar consumible
           if (!seenC.has(item.CONSUMIBLES)) {
             seenC.add(item.CONSUMIBLES);
             consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
           }
-          // Mostrar todas las compatibilidades (celda completa)
+          // mostrar impresoras compatibles (col COMPATIBILIDADES)
           item.COMPATIBILIDADES.forEach(c => {
             if (!seenI.has(c)) {
               seenI.add(c);
@@ -102,25 +103,24 @@
         }
       });
 
-      // 2) Búsqueda por código de impresora únicamente en COMPATIBILIDADES
-      // Obtener lista de impresoras según compatibilidades
+      // 2) Si buscas impresora por COMPATIBILIDADES
+      // encontrar nombres de impresoras en compatibilidades que contengan term
       const printers = data.reduce((set, item) => {
         item.COMPATIBILIDADES.forEach(c => {
           if (normalize(c).includes(term)) set.add(c);
         });
         return set;
       }, new Set());
-      // Mostrar impresoras encontradas
+      // mostrar impresoras
       printers.forEach(name => {
         if (!seenI.has(name)) {
           seenI.add(name);
           impUL.innerHTML += `<li>${name}</li>`;
         }
       });
-      // Para cada impresora encontrada, buscar consumibles y referencias que la incluyan
+      // para cada impresora encontrada, buscar consumibles que la incluyan en compatibilidades
       printers.forEach(prName => {
         data.forEach(item => {
-          // si el item lista esta impresora en compatibilidades
           if (item.COMPATIBILIDADES.some(c => normalize(c) === normalize(prName))) {
             const text = `${item.CONSUMIBLES} (${item.CAPACIDAD || 'sin capacidad'})`;
             if (!seenC.has(text)) {
@@ -131,7 +131,8 @@
         });
       });
 
-      if (seenC.size === 0 && seenI.size === 0) && seenI.size === 0) {
+      // 3) Mensaje de error si nada
+      if (seenC.size === 0 && seenI.size === 0) {
         err.textContent = 'Código no encontrado: ' + inp.value;
         err.style.visibility = 'visible';
       }
