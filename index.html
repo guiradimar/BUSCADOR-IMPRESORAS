@@ -26,8 +26,7 @@
     .message.error { color:#ff5252; font-weight:600; }
     main { max-width:1000px; margin:20px auto; padding:0 10px; }
     .grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
-    .panel { border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); min-height:200px; background:#fff; transition:transform .2s; }
-    .panel:hover { transform:translateY(-4px); }
+    .panel { border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); min-height:200px; background:#fff; }
     .panel.consumibles { border:2px solid #43a047; }
     .panel.impresoras { border:2px solid #e53935; }
     .panel h2 { margin-bottom:12px; font-size:1.3rem; }
@@ -55,81 +54,86 @@
     <button id="btnGoogle">BUSCAR EN GOOGLE</button>
   </main>
   <script>
-    const normalize = s => s ? String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'') : '';
-    let consumData = [], printerMap = [];
+    const normalize = s => s ? String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase() : '';
+    let data = [];
 
     async function loadData() {
       try {
-        const [res1, res2] = await Promise.all([
-          fetch('./dataset_full_with_categoria.json'),
-          fetch('./printers_map.json')
-        ]);
-        if(!res1.ok||!res2.ok) throw new Error();
-        const js1 = await res1.json();
-        const js2 = await res2.json();
-        consumData = js1.rows || js1; // rows for original format
-        printerMap = js2;
+        const res = await fetch('./dataset_full_with_categoria.json');
+        if(!res.ok) throw new Error();
+        data = await res.json();
       } catch(e) {
         const err = document.getElementById('msgError');
-        err.textContent = 'Error cargando datos'; err.style.display='block';
+        err.textContent = 'Error cargando datos'; err.style.display = 'block';
       }
     }
 
     function clearPanels() {
-      document.getElementById('panelConsumibles').innerHTML='';
-      document.getElementById('panelImpresoras').innerHTML='';
-      document.getElementById('msgError').style.display='none';
+      document.getElementById('panelConsumibles').innerHTML = '';
+      document.getElementById('panelImpresoras').innerHTML = '';
+      document.getElementById('msgError').style.display = 'none';
     }
 
     function renderList(id, items) {
-      const ul=document.getElementById(id);
-      ul.innerHTML='';
-      items.forEach(i=>{const li=document.createElement('li');li.textContent=i;ul.appendChild(li);});
+      const ul = document.getElementById(id);
+      ul.innerHTML = '';
+      items.forEach(i => {
+        const li = document.createElement('li');
+        li.textContent = i;
+        ul.appendChild(li);
+      });
     }
 
     function onSearch(e) {
-      if(e.key!=='Enter') return;
-      const raw=document.getElementById('search').value.trim();
+      if(e.key !== 'Enter') return;
+      const raw = document.getElementById('search').value.trim();
       if(!raw) return;
       clearPanels();
-      const term=normalize(raw);
+      const term = normalize(raw);
 
-      // Buscar impresoras en printerMap
-      const matchedPrinters = printerMap.filter(p=>normalize(p.printer).includes(term));
-      if(matchedPrinters.length) {
-        // muestra impresoras
-        const printers = matchedPrinters.map(p=>p.printer);
+      // Búsqueda por modelo en compatibilidades (impresora)
+      const printerRows = data.filter(r => r.COMPATIBILIDADES && normalize(r.COMPATIBILIDADES).includes(term));
+      if(printerRows.length) {
+        // extraer impresoras únicas que coincidan con term
+        const printers = Array.from(new Set(
+          printerRows.flatMap(r => r.COMPATIBILIDADES.split(',').map(p => p.trim()))
+            .filter(p => normalize(p).includes(term))
+        ));
         renderList('panelImpresoras', printers);
-        // muestra consumibles asociados
-        const consumibles = [...new Set(matchedPrinters.flatMap(p=>p.consumibles))];
+        // mostrar consumibles
+        const consumibles = Array.from(new Set(printerRows.map(r => r.NOMBRE)));
         renderList('panelConsumibles', consumibles);
         return;
       }
 
-      // Si no hay impresora, buscar consumibles y derivar impresoras
-      const matchedCons = consumData.filter(r=>
-        (r.referencia&&normalize(r.referencia).includes(term))||
-        (r.nombre&&normalize(r.nombre).includes(term))
+      // Búsqueda por referencia o nombre de consumible
+      const consRows = data.filter(r =>
+        (r.REFERENCIA && normalize(r.REFERENCIA).includes(term)) ||
+        (r.NOMBRE && normalize(r.NOMBRE).includes(term))
       );
-      if(matchedCons.length) {
-        const consNames = [...new Set(matchedCons.map(r=>r.nombre))];
+      if(consRows.length) {
+        const consNames = Array.from(new Set(consRows.map(r => r.NOMBRE)));
         renderList('panelConsumibles', consNames);
-        // buscar impresoras en printerMap que incluyan esos consumibles
-        const printers = [...new Set(
-          printerMap.filter(p=>consNames.some(cn=>p.consumibles.includes(cn))).map(p=>p.printer)
-        )];
+        // extraer impresoras compatibles únicas
+        const printers = Array.from(new Set(
+          consRows.flatMap(r => r.COMPATIBILIDADES.split(',').map(p => p.trim()))
+        ));
         renderList('panelImpresoras', printers);
         return;
       }
 
       // Sin resultados
-      const err=document.getElementById('msgError');
-      err.textContent=`CÓDIGO NO ENCONTRADO: ${raw}`; err.style.display='block';
+      const err = document.getElementById('msgError');
+      err.textContent = `CÓDIGO NO ENCONTRADO: ${raw}`;
+      err.style.display = 'block';
     }
 
-    document.getElementById('search').addEventListener('keydown',onSearch);
-    document.getElementById('clear').addEventListener('click',()=>{document.getElementById('search').value='';clearPanels();});
-    window.addEventListener('load',()=>{loadData();clearPanels();});
+    document.getElementById('search').addEventListener('keydown', onSearch);
+    document.getElementById('clear').addEventListener('click', () => {
+      document.getElementById('search').value = '';
+      clearPanels();
+    });
+    window.addEventListener('load', () => { loadData(); clearPanels(); });
   </script>
 </body>
 </html>
