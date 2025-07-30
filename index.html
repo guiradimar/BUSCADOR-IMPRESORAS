@@ -114,18 +114,10 @@
 
   <script>
     let data = [];
-    // Ajustado: cargar el JSON correcto publicado
-    fetch('./dataset_full_with_consumibles.json')
-      .then(res => {
-        console.log('Fetch status:', res.status);
-        return res.json();
-      })
-      .then(json => {
-        console.log('Datos cargados:', json.length);
-        data = json;
-      })
-      .catch(err => {
-        console.error('Error cargando datos:', err);
+    fetch('./consumibles_impresoras_full.json')
+      .then(res => res.json())
+      .then(json => data = json)
+      .catch(() => {
         document.getElementById('errorMsg').textContent = 'Error cargando datos';
       });
 
