@@ -64,7 +64,7 @@
   <header>
     <h1>Buscador de Consumibles e Impresoras</h1>
     <div class="searchbar">
-      <input type="text" id="searchInput" placeholder="Ingrese referencia o modelo" />
+      <input type="text" id="searchInput" placeholder="Ingrese referencia, nombre o modelo" />
       <button id="clearBtn">Limpiar</button>
     </div>
     <div class="error" id="errorMsg"></div>
@@ -84,6 +84,7 @@
 
   <script>
     let data = [];
+    // Cargar JSON con el nuevo nombre y ruta
     fetch('dataset_full_with_consumibles.json')
       .then(res => res.json())
       .then(json => data = json)
@@ -96,11 +97,11 @@
     const iList = document.getElementById('impresorasList');
     const gBtn = document.getElementById('googleBtn');
 
-    function render(array, el) {
+    function render(items, el) {
       el.innerHTML = '';
-      array.forEach(item => {
+      items.forEach(text => {
         const li = document.createElement('li');
-        li.textContent = item;
+        li.textContent = text;
         el.appendChild(li);
       });
     }
@@ -122,14 +123,23 @@
       if (!q || !data.length) return;
       err.textContent = '';
 
+      // Filtrar impresoras: buscar en modelo o nombre si categoria es Impresora
       const impresoras = data
-        .filter(r => r.modelo.toLowerCase().includes(q))
-        .map(r => r.modelo);
+        .filter(r => r.CATEGORIA.toLowerCase().includes('impresora')
+                   && (r.REFERENCIA.toLowerCase().includes(q)
+                       || r.NOMBRE.toLowerCase().includes(q)
+                       || (r.COMPATIBILIDADES || '').toLowerCase().includes(q)))
+        .map(r => r.NOMBRE)
+        .filter((v,i,a) => a.indexOf(v)===i);
 
+      // Filtrar consumibles: buscar en compatibilidades, referencia o nombre si categoria es Consumible
       const consumibles = data
-        .filter(r => r.modelo.toLowerCase().includes(q))
-        .flatMap(r => r.consumibles)
-        .filter((v,i,a) => a.indexOf(v) === i);
+        .filter(r => r.CATEGORIA.toLowerCase().includes('consumible')
+                   && (r.COMPATIBILIDADES.toLowerCase().includes(q)
+                       || r.REFERENCIA.toLowerCase().includes(q)
+                       || r.NOMBRE.toLowerCase().includes(q)))
+        .map(r => r.NOMBRE)
+        .filter((v,i,a) => a.indexOf(v)===i);
 
       if (!impresoras.length && !consumibles.length) {
         err.textContent = `Código no encontrado: ${q}`;
