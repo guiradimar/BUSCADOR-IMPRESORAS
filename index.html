@@ -5,74 +5,232 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>BUSCADOR DE CONSUMIBLES E IMPRESORAS</title>
   <style>
-    :root { --r:12px; --s:0 4px 15px rgba(0,0,0,0.1); --cp:#e3f2fd; --cc:#f1f8e9; --bd:#ccc; --err:#DB4437; --bc:#0F9D58; }
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:sans-serif;background:#f5f5f5;color:#333;display:flex;flex-direction:column;align-items:center;min-height:100vh;}
-    header{width:100%;padding:2rem 1rem;background:linear-gradient(90deg,#2196F3,#4CAF50);box-shadow:var(--s);display:flex;flex-direction:column;align-items:center;}
-    header h1{font-size:2rem;color:#000;text-transform:uppercase;}
-    .searchbar{margin-top:1rem;display:flex;width:100%;max-width:600px;}
-    .searchbar input{flex:1;padding:.75rem 1rem;border:1px solid var(--bd);border-radius:var(--r) 0 0 var(--r);font-size:1rem;box-shadow:var(--s);}
-    .searchbar button{padding:.75rem 1rem;border:1px solid var(--bd);border-left:none;border-radius:0 var(--r) var(--r) 0;background:var(--bc);color:#fff;cursor:pointer;box-shadow:var(--s);}
-    .error{margin-top:.5rem;color:var(--err);min-height:1.4em;visibility:hidden;}
-    .grid{display:flex;gap:1rem;margin:2rem;width:100%;max-width:800px;justify-content:center;}
-    .card{flex:1;background:#fff;border-radius:var(--r);box-shadow:var(--s);padding:1rem;max-height:300px;overflow:auto;}
-    .card h2{text-transform:uppercase;margin-bottom:.5rem;}
-    .card ul{list-style:none;padding:0;}
-    .card li{padding:.5rem 0;border-bottom:1px solid #ddd;text-transform:uppercase;}
-    #consum{background:var(--cc);} #imp{background:var(--cp);}
-    .google{margin:1rem auto;padding:.75rem 2rem;border:none;border-radius:var(--r);background:#DB4437;color:#fff;cursor:pointer;box-shadow:var(--s);}
+    :root {
+      --radius: 12px;
+      --shadow: 0 4px 15px rgba(0,0,0,0.1);
+      --color-printer: #e3f2fd;
+      --color-consumable: #f1f8e9;
+      --border: #ccc;
+      --error-color: #DB4437;
+      --clear-btn: #0F9D58;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    header {
+      width: 100%;
+      padding: 2rem 1rem;
+      background: linear-gradient(90deg, #2196F3, #4CAF50);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header h1 {
+      font-size: 2rem;
+      color: #000;
+      text-transform: uppercase;
+    }
+    .searchbar {
+      margin-top: 1rem;
+      display: flex;
+      width: 100%;
+      max-width: 600px;
+    }
+    .searchbar input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius) 0 0 var(--radius);
+      font-size: 1rem;
+      box-shadow: var(--shadow);
+    }
+    .searchbar button {
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-left: none;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      background: var(--clear-btn);
+      color: #fff;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+    .error {
+      margin-top: 0.5rem;
+      color: var(--error-color);
+      min-height: 1.4em;
+      visibility: hidden;
+      text-align: center;
+    }
+    .grid {
+      display: flex;
+      gap: 1rem;
+      margin: 2rem 0;
+      width: 100%;
+      max-width: 800px;
+      justify-content: center;
+    }
+    .card {
+      flex: 1;
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .card h2 {
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+    }
+    .card ul {
+      list-style: none;
+      padding: 0;
+    }
+    .card li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #ddd;
+      text-transform: uppercase;
+    }
+    #consumibles { background: var(--color-consumable); }
+    #impresoras { background: var(--color-printer); }
+    .google-btn {
+      margin: 1rem auto 2rem;
+      padding: 0.75rem 2rem;
+      border: none;
+      border-radius: var(--radius);
+      background: #DB4437;
+      color: #fff;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Buscador de Consumibles e Impresoras</h1>
     <div class="searchbar">
-      <input id="q" type="text" placeholder="Ej. HP301, CH561EE, Canon TS3350"/>
-      <button id="clear">Limpiar</button>
+      <input id="searchInput" type="text" placeholder="Ej. HP301, CH561EE, Canon TS3350" />
+      <button id="clearBtn">Limpiar</button>
     </div>
-    <div class="error" id="err"></div>
+    <div class="error" id="errorMsg"></div>
   </header>
   <div class="grid">
-    <div class="card" id="consum"><h2>Consumibles</h2><ul id="lc"></ul></div>
-    <div class="card" id="imp"><h2>Impresoras</h2><ul id="li"></ul></div>
+    <div class="card" id="consumibles">
+      <h2>Consumibles</h2>
+      <ul id="consumiblesList"></ul>
+    </div>
+    <div class="card" id="impresoras">
+      <h2>Impresoras</h2>
+      <ul id="impresorasList"></ul>
+    </div>
   </div>
-  <button class="google" id="g">Buscar en Google</button>
+  <button class="google-btn" id="googleBtn">Buscar en Google</button>
   <script>
-    const normalize=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-\u036f]/g,'').trim();
-    let D=[];
+    const normalize = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+    let data = [];
     fetch('consumibles_impresoras_full.json')
-      .then(r=>r.json()).then(j=>D=j).catch(()=>{
-        let e=document.getElementById('err'); e.textContent='Error cargando datos'; e.style.visibility='visible';
+      .then(res => res.json())
+      .then(json => data = json)
+      .catch(() => {
+        const e = document.getElementById('errorMsg');
+        e.textContent = 'Error cargando datos';
+        e.style.visibility = 'visible';
       });
-    const qE=document.getElementById('q'), errE=document.getElementById('err'),
-          lc=document.getElementById('lc'), li=document.getElementById('li'),
-          clr=document.getElementById('clear'), gg=document.getElementById('g');
-    clr.onclick=()=>{qE.value=''; errE.style.visibility='hidden'; lc.innerHTML=''; li.innerHTML=''; qE.focus();};
-    gg.onclick=()=>{let t=qE.value.trim(); t&&open('https://www.google.com/search?q='+encodeURIComponent(t),'_blank');};
-    qE.addEventListener('keydown',e=>{if(e.key==='Enter')search();});
-    function search(){
-      let raw=qE.value.trim(); if(!raw) return;
-      let x=normalize(raw);
-      errE.style.visibility='hidden'; lc.innerHTML=''; li.innerHTML='';
-      // impresora
-      let ip=D.find(r=>normalize(r.IMPRESORAS)===x);
-      if(ip){
-        li.appendChild(Elem(ip.IMPRESORAS));
-        D.forEach(r=>r.COMPATIBILIDADES.forEach(c=>{if(normalize(c)===x) lc.appendChild(Elem(r.CONSUMIBLES));}));
-        if(!lc.children.length){errE.textContent='No hay consumibles compatibles'; errE.style.visibility='visible';}
-        return;
+
+    const input = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('clearBtn');
+    const errorMsg = document.getElementById('errorMsg');
+    const consumList = document.getElementById('consumiblesList');
+    const impresList = document.getElementById('impresorasList');
+    const googleBtn = document.getElementById('googleBtn');
+
+    clearBtn.onclick = () => {
+      input.value = '';
+      errorMsg.style.visibility = 'hidden';
+      consumList.innerHTML = '';
+      impresList.innerHTML = '';
+      input.focus();
+    };
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') search();
+    });
+
+    googleBtn.onclick = () => {
+      const q = input.value.trim();
+      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
+    };
+
+    function search() {
+      const query = normalize(input.value.trim());
+      if (!query) return;
+
+      errorMsg.style.visibility = 'hidden';
+      consumList.innerHTML = '';
+      impresList.innerHTML = '';
+
+      // Buscar impresoras
+      const matchedPrinters = data.filter(item =>
+        normalize(item.IMPRESORAS).includes(query) ||
+        item.COMPATIBILIDADES.some(c => normalize(c).includes(query))
+      );
+
+      // Mostrar impresoras únicas
+      new Set(matchedPrinters.map(item => item.IMPRESORAS)).forEach(name => {
+        const li = document.createElement('li');
+        li.textContent = name.toUpperCase();
+        impresList.appendChild(li);
+      });
+
+      // Mostrar consumibles compatibles con esas impresoras
+      matchedPrinters.forEach(item => {
+        item.COMPATIBILIDADES.forEach(c => {
+          if (normalize(c).includes(query)) {
+            const li = document.createElement('li');
+            li.textContent = item.CONSUMIBLES.toUpperCase();
+            consumList.appendChild(li);
+          }
+        });
+      });
+
+      // Buscar consumibles o referencias
+      const matchedConsumables = data.filter(item =>
+        normalize(item.CONSUMIBLES).includes(query) ||
+        normalize(item.REFERENCIA).includes(query)
+      );
+
+      // Mostrar consumibles únicos
+      new Set(matchedConsumables.map(item => item.CONSUMIBLES)).forEach(name => {
+        const li = document.createElement('li');
+        li.textContent = name.toUpperCase();
+        consumList.appendChild(li);
+      });
+
+      // Mostrar impresoras principales y compatibles para esos consumibles
+      matchedConsumables.forEach(item => {
+        const mainLi = document.createElement('li');
+        mainLi.textContent = item.IMPRESORAS.toUpperCase();
+        impresList.appendChild(mainLi);
+        item.COMPATIBILIDADES.forEach(c => {
+          const li = document.createElement('li');
+          li.textContent = c.toUpperCase();
+          impresList.appendChild(li);
+        });
+      });
+
+      if (!matchedPrinters.length && !matchedConsumables.length) {
+        errorMsg.textContent = `Código no encontrado: ${input.value.trim()}`;
+        errorMsg.style.visibility = 'visible';
       }
-      // consumible o referencia
-      let co=D.find(r=>normalize(r.CONSUMIBLES)===x||normalize(r.REFERENCIA)===x);
-      if(co){
-        lc.appendChild(Elem(co.CONSUMIBLES));
-        li.appendChild(Elem(co.IMPRESORAS));
-        co.COMPATIBILIDADES.forEach(c=>li.appendChild(Elem(c)));
-        return;
-      }
-      errE.textContent=`Código no encontrado: ${raw}`; errE.style.visibility='visible';
     }
-    function Elem(t){let li=document.createElement('li'); li.textContent=t.toUpperCase(); return li;}
   </script>
 </body>
 </html>
