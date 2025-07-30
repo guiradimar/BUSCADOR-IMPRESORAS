@@ -1,139 +1,78 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BUSCADOR DE IMPRESORAS</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Convertidor CSV a JSON con Compatibles</title>
   <style>
-    :root { --gap:14px; --radius:12px; --shadow:0 4px 12px rgba(0,0,0,0.1); }
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; background:#f3f4f6; }
-    header { background:linear-gradient(90deg,#4285f4,#0f9d58); padding:2rem 1rem; text-align:center; color:#fff; box-shadow:var(--shadow); }
-    header h1 { font-size:3rem; margin-bottom:0.5rem; }
-    .searchbar { display:flex; justify-content:center; align-items:center; gap:var(--gap); }
-    .searchbar input {
-      width:360px; padding:14px 18px; border:2px solid #fff;
-      border-radius:999px; outline:none; transition:0.2s;
-      background:rgba(255,255,255,0.9); color:#333;
-    }
-    .searchbar button {
-      padding:12px 22px; border:none; border-radius:999px;
-      background:#fff; color:#4285f4; font-weight:600; cursor:pointer;
-      box-shadow:var(--shadow); transition:transform .2s;
-    }
-    .searchbar button:hover { transform:scale(1.05); }
-    .message { text-align:center; margin:12px 0; font-size:1rem; }
-    .message.error { color:#ff5252; font-weight:600; }
-    main { max-width:1000px; margin:20px auto; padding:0 10px; }
-    .grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
-    .panel { border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); min-height:200px; background:#fff; }
-    .panel.consumibles { border:2px solid #43a047; }
-    .panel.impresoras { border:2px solid #e53935; }
-    .panel h2 { margin-bottom:12px; font-size:1.3rem; }
-    .panel ul { list-style:disc inside; max-height:220px; overflow-y:auto; }
-    #btnGoogle { display:block; margin:30px auto 0; padding:12px 30px; border:none; border-radius:var(--radius);
-      background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58); color:#fff; font-weight:600; cursor:pointer;
-      box-shadow:var(--shadow); transition:opacity .2s; }
-    #btnGoogle:hover { opacity:0.9; }
+    body { font-family: sans-serif; padding: 1rem; background: #f9f9f9; }
+    label { display: block; margin-bottom: .5rem; }
+    input, button { padding: .5rem; margin-bottom: 1rem; }
+    button { cursor: pointer; }
+    pre { background: #fff; padding: 1rem; border: 1px solid #ddd; max-height: 300px; overflow: auto; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>BUSCADOR DE IMPRESORAS</h1>
-    <div class="searchbar">
-      <input id="search" type="text" placeholder="Referencia, nombre o modelo" autocomplete="off" />
-      <button id="clear">Limpiar</button>
-    </div>
-    <div id="msgError" class="message error" style="display:none"></div>
-  </header>
-  <main>
-    <div class="grid">
-      <div class="panel consumibles"><h2>CONSUMIBLES</h2><ul id="panelConsumibles"></ul></div>
-      <div class="panel impresoras"><h2>IMPRESORAS</h2><ul id="panelImpresoras"></ul></div>
-    </div>
-    <button id="btnGoogle">BUSCAR EN GOOGLE</button>
-  </main>
+  <h1>Convertidor CSV → JSON (con consumibles compatibles)</h1>
+  <label for="fileInput">Selecciona tu CSV (delimitado por `;`):</label>
+  <input type="file" id="fileInput" accept=".csv" />
+  <button id="convertBtn" disabled>Convertir a JSON</button>
+  <a id="downloadLink" style="display:none; margin-left: 1rem;">Descargar JSON</a>
+  <h2>Vista previa JSON</h2>
+  <pre id="output"></pre>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script>
-    const normalize = s => s ? String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase() : '';
-    let data = [];
+    const fileInput = document.getElementById('fileInput');
+    const convertBtn = document.getElementById('convertBtn');
+    const output = document.getElementById('output');
+    const dlLink = document.getElementById('downloadLink');
 
-    async function loadData() {
-      try {
-        const res = await fetch('./dataset_full_with_categoria.json');
-        if(!res.ok) throw new Error();
-        data = await res.json();
-      } catch(e) {
-        const err = document.getElementById('msgError');
-        err.textContent = 'Error cargando datos'; err.style.display = 'block';
-      }
-    }
+    let rows = [];
 
-    function clearPanels() {
-      document.getElementById('panelConsumibles').innerHTML = '';
-      document.getElementById('panelImpresoras').innerHTML = '';
-      document.getElementById('msgError').style.display = 'none';
-    }
-
-    function renderList(id, items) {
-      const ul = document.getElementById(id);
-      ul.innerHTML = '';
-      items.forEach(i => {
-        const li = document.createElement('li');
-        li.textContent = i;
-        ul.appendChild(li);
-      });
-    }
-
-    function onSearch(e) {
-      if(e.key !== 'Enter') return;
-      const raw = document.getElementById('search').value.trim();
-      if(!raw) return;
-      clearPanels();
-      const term = normalize(raw);
-
-      // Búsqueda por modelo en compatibilidades (impresora)
-      const printerRows = data.filter(r => r.COMPATIBILIDADES && normalize(r.COMPATIBILIDADES).includes(term));
-      if(printerRows.length) {
-        // extraer impresoras únicas que coincidan con term
-        const printers = Array.from(new Set(
-          printerRows.flatMap(r => r.COMPATIBILIDADES.split(',').map(p => p.trim()))
-            .filter(p => normalize(p).includes(term))
-        ));
-        renderList('panelImpresoras', printers);
-        // mostrar consumibles
-        const consumibles = Array.from(new Set(printerRows.map(r => r.NOMBRE)));
-        renderList('panelConsumibles', consumibles);
-        return;
-      }
-
-      // Búsqueda por referencia o nombre de consumible
-      const consRows = data.filter(r =>
-        (r.REFERENCIA && normalize(r.REFERENCIA).includes(term)) ||
-        (r.NOMBRE && normalize(r.NOMBRE).includes(term))
-      );
-      if(consRows.length) {
-        const consNames = Array.from(new Set(consRows.map(r => r.NOMBRE)));
-        renderList('panelConsumibles', consNames);
-        // extraer impresoras compatibles únicas
-        const printers = Array.from(new Set(
-          consRows.flatMap(r => r.COMPATIBILIDADES.split(',').map(p => p.trim()))
-        ));
-        renderList('panelImpresoras', printers);
-        return;
-      }
-
-      // Sin resultados
-      const err = document.getElementById('msgError');
-      err.textContent = `CÓDIGO NO ENCONTRADO: ${raw}`;
-      err.style.display = 'block';
-    }
-
-    document.getElementById('search').addEventListener('keydown', onSearch);
-    document.getElementById('clear').addEventListener('click', () => {
-      document.getElementById('search').value = '';
-      clearPanels();
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) convertBtn.disabled = false;
     });
-    window.addEventListener('load', () => { loadData(); clearPanels(); });
+
+    convertBtn.addEventListener('click', () => {
+      convertBtn.disabled = true;
+      Papa.parse(fileInput.files[0], {
+        header: true,
+        delimiter: ';',
+        skipEmptyLines: true,
+        complete: results => {
+          rows = results.data;
+          // Generar mapa código → consumibles
+          const map = {};
+          rows.forEach(r => {
+            const comps = (r.COMPATIBILIDADES|| '').split(/,|>/).map(x=>x.trim()).filter(x=>x);
+            comps.forEach(c => {
+              map[c] = map[c] || new Set();
+              if (r.NOMBRE) map[c].add(r.NOMBRE);
+            });
+          });
+          // Añadir array consumibles_compatibles a cada row
+          const processed = rows.map(r => {
+            const comps = (r.COMPATIBILIDADES|| '').split(/,|>/).map(x=>x.trim()).filter(x=>x);
+            const compatibles = Array.from(new Set(comps.flatMap(c => Array.from(map[c]||[]))));
+            return {...r, consumibles_compatibles: compatibles};
+          });
+
+          const json = { columns: Object.keys(processed[0]||{}), rows: processed };
+          const str = JSON.stringify(json, null, 2);
+          output.textContent = str;
+
+          // Crear enlace de descarga
+          const blob = new Blob([str], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          dlLink.href = url;
+          dlLink.download = 'dataset_full_with_consumibles.json';
+          dlLink.textContent = 'Descargar JSON';
+          dlLink.style.display = 'inline-block';
+          convertBtn.disabled = false;
+        }
+      });
+    });
   </script>
 </body>
 </html>
