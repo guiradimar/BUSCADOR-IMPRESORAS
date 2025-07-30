@@ -15,7 +15,7 @@
     .searchbar input:focus { border-color:#4285f4; box-shadow:0 0 8px rgba(66,133,244,0.3); }
     .searchbar button { padding:.75rem 1.25rem; border:none; border-radius:999px; background:#4285f4; color:#fff; cursor:pointer; }
     .message { text-align:center; margin-bottom:1rem; font-size:1rem; }
-    .message.error { color:#b91c1c; }
+    .message.error { color:#b91c1c; display:none; }
     main { max-width:1100px; margin:0 auto; padding:1rem; }
     .grid { display:grid; gap:var(--gap); grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
     .panel { background:#fff; border-radius:var(--radius); padding:1rem; box-shadow:var(--shadow); }
@@ -25,8 +25,7 @@
     .c-impresoras { border:2px solid #dc2626; }
     .c-col-odd { border:2px solid #d97706; }
     .c-col-even { border:2px solid #2563eb; }
-    #btnGoogle { display:block; margin:1rem auto; padding:.75rem 1.5rem; border:none; border-radius:var(--radius);
-      background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58); color:#fff; cursor:pointer; }
+    #btnGoogle { display:none; margin:1rem auto; padding:.75rem 1.5rem; border:none; border-radius:var(--radius); background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58); color:#fff; cursor:pointer; }
   </style>
 </head>
 <body>
@@ -36,7 +35,7 @@
       <input id="search" type="text" placeholder="Escribe referencia o nombre..." autofocus autocomplete="off" />
       <button id="clear">Limpiar</button>
     </div>
-    <div id="msgError" class="message error" style="display:none;"></div>
+    <div id="msgError" class="message error"></div>
   </header>
   <main>
     <div id="results">
@@ -51,90 +50,75 @@
         </div>
       </div>
       <div class="grid" id="extraPanels"></div>
-      <button id="btnGoogle" style="display:none;">BUSCAR EN GOOGLE</button>
+      <button id="btnGoogle">BUSCAR EN GOOGLE</button>
     </div>
   </main>
   <script>
     const normalize = s => s ? s.toString().normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'') : '';
     let data = [], columns = [], consumCols = [], impresCols = [], otherCols = [];
-    // Carga JSON
+    // Cargar datos JSON
     async function loadData() {
       try {
         const resp = await fetch('dataset_clean.json');
-        if (!resp.ok) throw 0;
+        if (!resp.ok) throw new Error();
         const js = await resp.json();
         data = js.rows;
         columns = js.columns;
-        // Solo columna 'nombre' en consumibles
-        consumCols = columns.filter(c => normalize(c).includes('nombre') );
-        impresCols = columns.filter(c => normalize(c).includes('compatibil') );
-        otherCols = columns.filter(c => !normalize(c).includes('nombre') && !normalize(c).includes('compatibil'));
-      } catch {
-        const e = document.getElementById('msgError');
-        e.textContent = 'Error cargando datos';
-        e.style.display = '';
+        // Consumibles: solo columna 'nombre' exacta
+        consumCols = columns.filter(c => normalize(c) === 'nombre');
+        impresCols = columns.filter(c => normalize(c).includes('compatibil'));
+        otherCols = columns.filter(c => !['nombre'].includes(normalize(c)) && !normalize(c).includes('compatibil'));
+      } catch (e) {
+        const err = document.getElementById('msgError');
+        err.textContent = 'Error cargando datos';
+        err.style.display = '';
       }
     }
-    // Mostrar solo un producto
-    function showItem(item) {
-      // Consumibles: solo 'nombre'
-      const pc = document.getElementById('panelConsumibles');
-      pc.innerHTML = '';
-      consumCols.forEach(c => {
-        if (item[c] != null) pc.appendChild(li(item[c]));
+    // Mostrar varios productos en paneles
+    function renderFiltered(list) {
+      // Consumibles: todos los nombres
+      const pc = document.getElementById('panelConsumibles'); pc.innerHTML = '';
+      list.forEach(r => {
+        consumCols.forEach(c => {
+          const v = r[c];
+          if (v != null) pc.appendChild(li(v));
+        });
       });
-      // Impresoras
-      const pi = document.getElementById('panelImpresoras');
-      pi.innerHTML = '';
-      impresCols.forEach(c => {
-        if (item[c] != null) pi.appendChild(li(item[c]));
+      // Impresoras: agrupar todas las compatibilidades
+      const pi = document.getElementById('panelImpresoras'); pi.innerHTML = '';
+      list.forEach(r => {
+        impresCols.forEach(c => {
+          const v = r[c];
+          if (v != null) {
+            v.split(',').forEach(code => pc && pi.appendChild(li(code.trim())));
+          }
+        });
       });
-      // Extra campos
-      const ext = document.getElementById('extraPanels');
-      ext.innerHTML = '';
-      otherCols.forEach((c,i) => {
+      // Extra campos para cada registro (solo descripción, capacidad, color, precio, marca)
+      const ext = document.getElementById('extraPanels'); ext.innerHTML = '';
+      const desired = ['marca','precio','color','capacidad','descripcion'];
+      desired.forEach((key,i) => {
         const panel = document.createElement('div');
         panel.className = 'panel ' + (i%2 ? 'c-col-even' : 'c-col-odd');
-        const h2 = document.createElement('h2'); h2.textContent = c;
+        const h2 = document.createElement('h2'); h2.textContent = key.toUpperCase();
         const ul = document.createElement('ul');
-        if (item[c] != null) {
-          let v = item[c];
-          // Primera línea en descripción
-          if (normalize(c).includes('descripcion')) v = v.split('\n')[0];
-          ul.appendChild(li(v));
-        }
-        panel.append(h2, ul);
+        list.forEach(r => {
+          columns.forEach(col => {
+            if (normalize(col).includes(key) && r[col] != null) {
+              let v = r[col].toString();
+              if (key === 'descripcion') v = v.split('
+')[0];
+              ul.appendChild(li(v));
+            }
+          });
+        });
+        panel.append(h2,ul);
         ext.append(panel);
       });
     }
-    function li(text) { const e = document.createElement('li'); e.textContent = text; return e; }
-    // Búsqueda solo al ENTER
-    function onKeyDown(e) {
-      if (e.key === 'Enter') onSearch();
-    }
-    function onSearch() {
-      const term = normalize(document.getElementById('search').value);
-      const err = document.getElementById('msgError');
-      const btnG = document.getElementById('btnGoogle');
-      if (!term) return;
-      const found = data.find(r =>
-        consumCols.concat(impresCols).some(c => normalize(r[c]).includes(term))
-      );
-      if (!found) {
-        err.textContent = `CÓDIGO NO ENCONTRADO: ${document.getElementById('search').value}`;
-        err.style.display = '';
-        btnG.style.display = '';
-        btnG.onclick = () => window.open(
-          `https://google.com/search?q=${encodeURIComponent(document.getElementById('search').value)}`,
-          '_blank'
-        );
-      } else {
-        err.style.display = 'none';
-        btnG.style.display = 'none';
-        showItem(found);
-      }
-    }
-    // Limpiar
+    function li(text) { const e = document.createElement('li'); e.textContent = text; return e; }(text) { const e = document.createElement('li'); e.textContent = text; return e; }
+    // Búsqueda al ENTER
+    
     function onClear() {
       document.getElementById('search').value = '';
       document.getElementById('msgError').style.display = 'none';
