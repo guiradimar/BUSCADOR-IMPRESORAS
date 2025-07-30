@@ -12,6 +12,7 @@
       --color-consumable: #f1f8e9;
       --input-border: #ccc;
       --error-color: #DB4437;
+      --btn-clear: #0F9D58;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -23,8 +24,7 @@
     header {
       width: 100%; padding: 2rem 1rem;
       background: linear-gradient(90deg, #2196F3, #4CAF50);
-      color: #fff; text-align: center;
-      box-shadow: var(--shadow);
+      text-align: center; box-shadow: var(--shadow);
     }
     header h1 {
       font-size: 2rem; margin-bottom: 1rem;
@@ -39,7 +39,6 @@
       border: 1px solid var(--input-border);
       border-radius: var(--radius) 0 0 var(--radius);
       font-size: 1rem;
-      transition: background 0.3s ease;
       background: #fff; box-shadow: var(--shadow);
     }
     .searchbar input:focus {
@@ -50,8 +49,8 @@
       border: 1px solid var(--input-border);
       border-left: none;
       border-radius: 0 var(--radius) var(--radius) 0;
-      background: #fff;
-      cursor: pointer;
+      background: var(--btn-clear);
+      color: #fff; cursor: pointer;
       box-shadow: var(--shadow);
     }
     .error {
@@ -99,6 +98,7 @@
     </div>
     <div class="error" id="errorMsg"></div>
   </header>
+
   <div class="grid">
     <div class="card" id="consumiblesCard">
       <h2>Consumibles</h2>
@@ -109,48 +109,91 @@
       <ul id="impresorasList"></ul>
     </div>
   </div>
+
   <button class="google-btn" id="googleBtn">Buscar en Google</button>
+
   <script>
     let data = [];
-    fetch('./consumibles_impresoras_full.json')
-      .then(res => res.json())
-      .then(json => data = json)
-      .catch(() => document.getElementById('errorMsg').textContent = 'Error cargando datos');
+    // Ajustado: cargar el JSON correcto publicado
+    fetch('./dataset_full_with_consumibles.json')
+      .then(res => {
+        console.log('Fetch status:', res.status);
+        return res.json();
+      })
+      .then(json => {
+        console.log('Datos cargados:', json.length);
+        data = json;
+      })
+      .catch(err => {
+        console.error('Error cargando datos:', err);
+        document.getElementById('errorMsg').textContent = 'Error cargando datos';
+      });
+
     const inp = document.getElementById('searchInput');
     const clearBtn = document.getElementById('clearBtn');
     const err = document.getElementById('errorMsg');
     const consumList = document.getElementById('consumiblesList');
     const impresList = document.getElementById('impresorasList');
     const googleBtn = document.getElementById('googleBtn');
+
     function normalize(str) {
-      return String(str).toLowerCase().normalize('NFD')
-        .replace(/[̀-ͯ]/g,'')
-        .replace(/[^a-z0-9 ]/g,'').trim();
+      return String(str || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9 ]/g, '')
+        .trim();
     }
+
     clearBtn.onclick = () => {
-      inp.value=''; err.textContent=''; consumList.innerHTML=''; impresList.innerHTML='';
+      inp.value = '';
+      err.textContent = '';
+      consumList.innerHTML = '';
+      impresList.innerHTML = '';
+      inp.focus();
     };
-    inp.onkeydown = e => { if(e.key==='Enter') runSearch(); };
+
+    inp.onkeydown = e => {
+      if (e.key === 'Enter') runSearch();
+    };
+
     googleBtn.onclick = () => {
-      const q=inp.value.trim(); if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q));
+      const q = inp.value.trim();
+      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
     };
-    function runSearch(){
-      const raw=inp.value.trim(); if(!raw) return;
-      err.textContent=''; consumList.innerHTML=''; impresList.innerHTML='';
-      const q=normalize(raw);
-      const rows=data.filter(item =>
-        normalize(item.REFERENCIA).includes(q)||
-        normalize(item.CONSUMIBLES).includes(q)||
-        normalize(item.IMPRESORAS).includes(q)||
+
+    function runSearch() {
+      const raw = inp.value.trim();
+      if (!raw) return;
+      err.textContent = '';
+      consumList.innerHTML = '';
+      impresList.innerHTML = '';
+
+      const q = normalize(raw);
+      const rows = data.filter(item =>
+        normalize(item.REFERENCIA).includes(q) ||
+        normalize(item.CONSUMIBLES).includes(q) ||
+        normalize(item.IMPRESORAS).includes(q) ||
         normalize(item.DESCRIPCION).includes(q)
       );
-      if(!rows.length){
-        err.textContent=`Código no encontrado: ${raw}`; return;
+
+      if (!rows.length) {
+        err.textContent = `Código no encontrado: ${raw}`;
+        return;
       }
-      [...new Set(rows.map(r=>r.CONSUMIBLES.toUpperCase()))]
-        .forEach(name=>{ const li=document.createElement('li'); li.textContent=name; consumList.appendChild(li); });
-      [...new Set(rows.map(r=>r.IMPRESORAS.toUpperCase()))]
-        .forEach(name=>{ const li=document.createElement('li'); li.textContent=name; impresList.appendChild(li); });
+
+      Array.from(new Set(rows.map(r => r.CONSUMIBLES.toUpperCase())))
+        .forEach(name => {
+          const li = document.createElement('li');
+          li.textContent = name;
+          consumList.appendChild(li);
+        });
+
+      Array.from(new Set(rows.map(r => r.IMPRESORAS.toUpperCase())))
+        .forEach(name => {
+          const li = document.createElement('li');
+          li.textContent = name;
+          impresList.appendChild(li);
+        });
     }
   </script>
 </body>
