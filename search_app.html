@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Buscador de Consumibles e Impresoras</title>
+  <style>
+    :root { --gap:14px; --radius:12px; --shadow:0 4px 12px rgba(0,0,0,0.1); }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; background:#f3f4f6; }
+    header { background:linear-gradient(90deg,#4285f4,#0f9d58); padding:2rem; text-align:center; color:#fff; }
+    header h1 { font-size:2.5rem; }
+    .searchbar { display:flex; justify-content:center; align-items:center; gap:10px; margin-top:1rem; }
+    .searchbar input { flex:1; max-width:300px; padding:10px 15px; border-radius:999px; border:2px solid #fff; outline:none; }
+    .searchbar button { padding:10px 20px; border:none; border-radius:999px; background:#fff; color:#4285f4; cursor:pointer; }
+    .message { text-align:center; margin:1rem 0; color:#e53e3e; font-weight:600; display:none; }
+    main { max-width:900px; margin:2rem auto; padding:0 1rem; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
+    .panel { background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:1rem; }
+    .panel h2 { margin-bottom:.5rem; }
+    .panel ul { list-style:disc inside; max-height:200px; overflow-y:auto; }
+    #btnGoogle { display:block; margin:1rem auto; padding:10px 25px; background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58); color:#fff; border:none; border-radius:var(--radius); cursor:pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Buscador de Consumibles e Impresoras</h1>
+    <div class="searchbar">
+      <input id="search" type="text" placeholder="Referencia, nombre o modelo" autocomplete="off" />
+      <button id="clear">Limpiar</button>
+    </div>
+    <div id="msgError" class="message"></div>
+  </header>
+  <main>
+    <div class="grid">
+      <div class="panel">
+        <h2>Consumibles</h2>
+        <ul id="panelConsumibles"></ul>
+      </div>
+      <div class="panel">
+        <h2>Impresoras</h2>
+        <ul id="panelImpresoras"></ul>
+      </div>
+    </div>
+    <button id="btnGoogle">Buscar en Google</button>
+  </main>
+  <script>
+    const normalize = s => s ? String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase() : '';
+    let data = [];
+    async function loadData() {
+      try {
+        const res = await fetch('dataset_full_with_consumibles.json');
+        if (!res.ok) throw new Error('JSON no encontrado');
+        const js = await res.json();
+        data = js.rows || js;
+      } catch (e) {
+        const msg = document.getElementById('msgError');
+        msg.textContent = 'Error cargando datos'; msg.style.display = 'block';
+      }
+    }
+    function clearPanels() {
+      ['panelConsumibles','panelImpresoras'].forEach(id=>{
+        document.getElementById(id).innerHTML = '';
+      });
+      document.getElementById('msgError').style.display = 'none';
+    }
+    function renderList(id, items) {
+      const ul = document.getElementById(id);
+      ul.innerHTML = '';
+      items.forEach(i=>{
+        const li = document.createElement('li');
+        li.textContent = i;
+        ul.appendChild(li);
+      });
+    }
+    function searchTerm(raw) {
+      const term = normalize(raw);
+      clearPanels();
+      if (!term) return;
+      const btn = document.getElementById('btnGoogle');
+      btn.onclick = ()=> window.open(`https://www.google.com/search?q=${encodeURIComponent(raw)}`,'_blank');
+      // Impresoras primero
+      const impRows = data.filter(r => r.CONSUMIBLES_COMPATIBLES && normalize(r.CONSUMIBLES_COMPATIBLES).includes(term));
+      if (impRows.length) {
+        const printers = [...new Set(impRows.map(r=>r.IMPRESORAS))].filter(Boolean);
+        renderList('panelImpresoras', printers);
+        const consum = [...new Set(impRows.flatMap(r=>r.CONSUMIBLES_COMPATIBLES))];
+        renderList('panelConsumibles', consum);
+        return;
+      }
+      // Consumibles
+      const consRows = data.filter(r => 
+        (r.REFERENCIA && normalize(r.REFERENCIA).includes(term)) ||
+        (r.NOMBRE && normalize(r.NOMBRE).includes(term)));
+      if (consRows.length) {
+        const cons = [...new Set(consRows.map(r=>r.NOMBRE))];
+        renderList('panelConsumibles', cons);
+        const printers = [...new Set(consRows.flatMap(r=>r.IMPRESORAS || []))];
+        renderList('panelImpresoras', printers);
+        return;
+      }
+      const msg = document.getElementById('msgError');
+      msg.textContent = `Código no encontrado: ${raw}`; msg.style.display = 'block';
+    }
+    document.getElementById('search').addEventListener('keydown', e=>{ if(e.key==='Enter') searchTerm(e.target.value.trim()); });
+    document.getElementById('clear').addEventListener('click', ()=>{document.getElementById('search').value='';clearPanels();});
+    window.addEventListener('load', ()=>{ loadData().then(clearPanels); });
+  </script>
+</body>
+</html>
