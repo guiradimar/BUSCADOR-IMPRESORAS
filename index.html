@@ -34,8 +34,19 @@
     .c-impresoras { border-color: #bfdbfe; background: #eef6ff; }
     .c-col-odd { border-color: #fed7aa; background: #fff7ed; }
     .c-col-even { border-color: #ddd6fe; background: #f5f3ff; }
+    .btn-google {
+      padding: 10px 20px;
+      border: none;
+      border-radius: var(--radius);
+      background: linear-gradient(90deg, #4285F4, #DB4437, #F4B400, #0F9D58);
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: opacity .2s;
+    }
+    .btn-google:hover { opacity: 0.9; }
     .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: .9rem; }
-    .footer a { color: #2563eb; text-decoration: none; }
   </style>
 </head>
 <body>
@@ -60,7 +71,10 @@
       </article>
     </section>
     <section class="grid" id="columnsGrid"></section>
-    <p class="footer">Fuente: <code>data/dataset.json</code>. Si no hay resultados, pulsa <a id="webSearch" href="#" target="_blank">BUSCAR EN GOOGLE</a>.</p>
+    <p class="footer">
+      Fuente: <code>data/dataset_clean.json</code>. Si no hay resultados, pulsa
+      <button id="webSearch" class="btn-google">BUSCAR EN GOOGLE</button>.
+    </p>
   </main>
   <script>
     // Normalize string: lowercase, remove accents, remove non-alphanumeric
@@ -73,12 +87,11 @@
     }
     const state = { rows: [], columns: [], consumCols: [], impresCols: [], otherCols: [] };
     async function load() {
-      const res = await <code>data/dataset_clean.json</code>, { cache: 'no-store' });
+      const res = await fetch('data/dataset_clean.json', { cache: 'no-store' });
       if (!res.ok) throw new Error(res.status);
       const data = await res.json();
       state.rows = data.rows || [];
       state.columns = data.columns || Object.keys(state.rows[0] || {});
-      // Assign groups by column name
       state.columns.forEach(c => {
         const key = normalizeStr(c);
         if (key.includes('referenc') || key.includes('nombre')) state.consumCols.push(c);
@@ -97,7 +110,7 @@
         grid.appendChild(art);
       });
     }
-    function search() {
+    function render() {
       const inp = document.getElementById('q');
       const q = inp.value.trim();
       const normQ = normalizeStr(q);
@@ -108,18 +121,15 @@
         return state.columns.some(c => normalizeStr(r[c]).includes(normQ));
       });
       document.getElementById('count').textContent = `${results.length} coincidencia${results.length===1?'':'s'}`;
-      // Handle no results
       if (normQ && results.length === 0) {
         noFound.textContent = `CÓDIGO NO ENCONTRADO: ${q}`;
         noFound.style.display = 'block';
-        document.getElementById('webSearch').href = `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+        document.getElementById('webSearch').onclick = () => window.open(`https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank');
       } else {
         noFound.style.display = 'none';
       }
-      // Fill consumibles and impresoras
       fillList('listConsumibles', results, state.consumCols);
       fillList('listImpresoras', results, state.impresCols);
-      // Fill other columns
       state.otherCols.forEach((c, i) => fillList(`col-${i}`, results, [c]));
     }
     function fillList(id, rows, cols) {
@@ -127,14 +137,14 @@
       ul.innerHTML = '';
       const set = new Set();
       rows.forEach(r => cols.forEach(c => {
-        const v = r[c]; if (v!== null && v!==undefined) set.add(String(v));
+        const v = r[c]; if (v !== null && v !== undefined) set.add(String(v));
       }));
       Array.from(set).slice(0, 200).forEach(v => {
         const li = document.createElement('li'); li.textContent = v; ul.appendChild(li);
       });
     }
-    document.getElementById('q').addEventListener('input', search);
-    document.getElementById('clearBtn').addEventListener('click', () => { document.getElementById('q').value=''; search(); });
+    document.getElementById('q').addEventListener('input', render);
+    document.getElementById('clearBtn').addEventListener('click', () => { document.getElementById('q').value=''; render(); });
     window.addEventListener('load', load);
   </script>
 </body>
