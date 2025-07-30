@@ -61,13 +61,16 @@
     async function loadData() {
       try {
         const resp = await fetch('dataset_clean.json');
-        data = (await resp.json()).rows;
-        columns = (await resp.json()).columns;
+        if (!resp.ok) throw new Error('Fetch failed');
+        const json = await resp.json();
+        data = json.rows;
+        columns = json.columns;
         setupColumns();
         render([]);
       } catch (e) {
-        document.getElementById('msgError').textContent = 'Error al cargar datos';
-        document.getElementById('msgError').style.display = '';
+        const errEl = document.getElementById('msgError');
+        errEl.textContent = 'Error al cargar datos';
+        errEl.style.display = '';
       }
     }
     // Clasificar columnas
