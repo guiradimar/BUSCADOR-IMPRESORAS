@@ -23,7 +23,7 @@
     .panel ul { list-style:disc inside; max-height:150px; overflow-y:auto; }
     .c-consumibles { border:2px solid #16a34a; }
     .c-impresoras { border:2px solid #dc2626; }
-    #btnGoogle { margin:0 auto; display:block; padding:.75rem 1.5rem; border:none; border-radius:var(--radius); background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58); color:#fff; cursor:pointer; }
+    #btnGoogle { margin:0 auto; display:none; padding:.75rem 1.5rem; border:none; border-radius:var(--radius); background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58); color:#fff; cursor:pointer; }
   </style>
 </head>
 <body>
@@ -36,7 +36,7 @@
     <div id="msgError" class="message error" style="display:none;"></div>
   </header>
   <main>
-    <div class="grid" id="mainPanels">
+    <div class="grid">
       <div class="panel c-consumibles">
         <h2>CONSUMIBLES</h2>
         <ul id="panelConsumibles"></ul>
@@ -46,7 +46,7 @@
         <ul id="panelImpresoras"></ul>
       </div>
     </div>
-    <button id="btnGoogle" style="display:none;">BUSCAR EN GOOGLE</button>
+    <button id="btnGoogle">BUSCAR EN GOOGLE</button>
   </main>
   <script>
     const normalize = s => s ? String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'') : '';
@@ -59,12 +59,13 @@
         const js = await res.json();
         data = js.rows;
         cols = js.columns;
-        consumCols = cols.filter(c => normalize(c).includes('referenc') || normalize(c).includes('nombre'));
+        // Nombre columna exacta para consumibles
+        consumCols = cols.filter(c => normalize(c) === 'nombre');
         impresCols = cols.filter(c => normalize(c).includes('compatibil'));
       } catch {
         const e = document.getElementById('msgError');
         e.textContent = 'Error cargando datos';
-        e.style.display = '';
+        e.style.display = 'block';
       }
     }
 
@@ -77,15 +78,12 @@
 
     function renderFiltered(list) {
       clearPanels();
+      const nameList = list.map(r => r[consumCols[0]]).filter(Boolean);
       const pc = document.getElementById('panelConsumibles');
-      list.forEach(r => consumCols.forEach(c => {
-        if (r[c] != null) pc.appendChild(li(r[c]));
-      }));
+      nameList.forEach(name => pc.appendChild(li(name)));
       const pi = document.getElementById('panelImpresoras');
       list.forEach(r => impresCols.forEach(c => {
-        if (r[c] != null) {
-          r[c].split(',').forEach(code => pi.appendChild(li(code.trim())));
-        }
+        if (r[c]) r[c].split(',').forEach(code => pi.appendChild(li(code.trim())));
       }));
     }
 
@@ -99,20 +97,18 @@
       if (e.key !== 'Enter') return;
       e.preventDefault();
       const term = normalize(document.getElementById('search').value);
-      if (!term) {
-        clearPanels();
-        return;
-      }
+      if (!term) return clearPanels();
       const filtered = data.filter(r =>
-        consumCols.concat(impresCols).some(c => normalize(r[c]).includes(term))
+        consumCols.some(c => normalize(r[c]).includes(term)) ||
+        impresCols.some(c => normalize(r[c] || '').includes(term))
       );
       const err = document.getElementById('msgError');
       const btn = document.getElementById('btnGoogle');
-      if (!filtered.length) {
+      if (filtered.length === 0) {
         clearPanels();
         err.textContent = `CÓDIGO NO ENCONTRADO: ${document.getElementById('search').value}`;
-        err.style.display = '';
-        btn.style.display = '';
+        err.style.display = 'block';
+        btn.style.display = 'block';
         btn.onclick = () => window.open(
           `https://google.com/search?q=${encodeURIComponent(document.getElementById('search').value)}`,
           '_blank'
@@ -127,7 +123,11 @@
       document.getElementById('search').value = '';
       clearPanels();
     });
-    window.addEventListener('load', loadData);
+
+    window.addEventListener('load', () => {
+      loadData();
+      clearPanels();
+    });
   </script>
 </body>
 </html>
