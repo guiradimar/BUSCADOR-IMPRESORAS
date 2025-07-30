@@ -43,12 +43,8 @@
     <div class="error" id="errorMsg"></div>
   </header>
   <div class="grid">
-    <div class="card" id="consumiblesCard">
-      <h2>Consumibles</h2><ul id="consumiblesList"></ul>
-    </div>
-    <div class="card" id="impresorasCard">
-      <h2>Impresoras</h2><ul id="impresorasList"></ul>
-    </div>
+    <div class="card" id="consumiblesCard"><h2>Consumibles</h2><ul id="consumiblesList"></ul></div>
+    <div class="card" id="impresorasCard"><h2>Impresoras</h2><ul id="impresorasList"></ul></div>
   </div>
   <button class="google-btn" id="googleBtn">Buscar en Google</button>
   <script>
@@ -58,42 +54,79 @@
       .then(json => data = json)
       .catch(() => {
         let e = document.getElementById('errorMsg');
-        e.textContent='Error cargando datos';
-        e.style.visibility='visible';
+        e.textContent = 'Error cargando datos';
+        e.style.visibility = 'visible';
       });
+
     const inp = document.getElementById('searchInput'),
           clearBtn = document.getElementById('clearBtn'),
           err = document.getElementById('errorMsg'),
           consumList = document.getElementById('consumiblesList'),
           impresList = document.getElementById('impresorasList'),
           googleBtn = document.getElementById('googleBtn');
-    function normalize(str){ return String(str||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,'').trim(); }
-    clearBtn.onclick = () => { inp.value=''; err.style.visibility='hidden'; consumList.innerHTML=''; impresList.innerHTML=''; inp.focus(); };
-    inp.onkeydown = e => { if(e.key==='Enter') runSearch(); };
-    googleBtn.onclick = () => { let q=inp.value.trim(); if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank'); };
+
+    function normalize(str){
+      return String(str||'').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g,'')
+        .replace(/[^a-z0-9 ]/g,'')
+        .trim();
+    }
+
+    clearBtn.onclick = () => {
+      inp.value = '';
+      err.style.visibility = 'hidden';
+      consumList.innerHTML = '';
+      impresList.innerHTML = '';
+      inp.focus();
+    };
+
+    inp.onkeydown = e => { if (e.key === 'Enter') runSearch(); };
+
+    googleBtn.onclick = () => {
+      const q = inp.value.trim();
+      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
+    };
+
     function runSearch(){
-      let raw=inp.value.trim(); if(!raw) return;
-      err.style.visibility='hidden'; consumList.innerHTML=''; impresList.innerHTML='';
-      let q=normalize(raw), cons=new Set(), impr=new Set();
-      data.forEach(item=>{
-        // match printer search
-        if(normalize(item.IMPRESORAS).includes(q)){
-          impr.add(item.IMPRESORAS.toUpperCase());
-          if(item.CONSUMIBLES) cons.add(item.CONSUMIBLES.toUpperCase());
+      const raw = inp.value.trim();
+      if (!raw) return;
+      err.style.visibility = 'hidden';
+      consumList.innerHTML = '';
+      impresList.innerHTML = '';
+
+      const q = normalize(raw);
+      const consumiblesSet = new Set();
+      const impresorasSet = new Set();
+
+      data.forEach(item => {
+        // Si coincide referencia o consumible
+        if (normalize(item.REFERENCIA).includes(q) || normalize(item.CONSUMIBLES).includes(q)) {
+          if (item.CONSUMIBLES) consumiblesSet.add(item.CONSUMIBLES.toUpperCase());
+          (item.COMPATIBILIDADES || []).forEach(p => impresorasSet.add(p.toUpperCase()));
         }
-        // match consumible or reference search
-        if(normalize(item.CONSUMIBLES).includes(q) || normalize(item.REFERENCIA).includes(q)){
-          cons.add(item.CONSUMIBLES.toUpperCase());
-          // add all compatible printers
-          (item.COMPATIBILIDADES||[]).forEach(p=>impr.add(p.toUpperCase()));
+        // Si coincide con impresora en la lista de compatibilidades
+        if ((item.COMPATIBILIDADES || []).some(p => normalize(p).includes(q))) {
+          if (item.CONSUMIBLES) consumiblesSet.add(item.CONSUMIBLES.toUpperCase());
+          impresorasSet.add(raw.toUpperCase());
         }
       });
-      if(!cons.size && !impr.size){
-        err.textContent=`Código no encontrado: ${raw}`;
-        err.style.visibility='visible'; return;
+
+      if (!consumiblesSet.size && !impresorasSet.size) {
+        err.textContent = `Código no encontrado: ${raw}`;
+        err.style.visibility = 'visible';
+        return;
       }
-      cons.forEach(name=>{ let li=document.createElement('li'); li.textContent=name; consumList.appendChild(li); });
-      impr.forEach(name=>{ let li=document.createElement('li'); li.textContent=name; impresList.appendChild(li); });
+
+      consumiblesSet.forEach(name => {
+        const li = document.createElement('li');
+        li.textContent = name;
+        consumList.appendChild(li);
+      });
+      impresorasSet.forEach(name => {
+        const li = document.createElement('li');
+        li.textContent = name;
+        impresList.appendChild(li);
+      });
     }
   </script>
 </body>
