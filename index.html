@@ -40,7 +40,7 @@
   <header>
     <h1>BUSCADOR DE IMPRESORAS</h1>
     <div class="searchbar">
-      <input id="search" placeholder="Ingresa referencia, nombre o compatibilidad..." autocomplete="off" />
+      <input id="search" type="search" placeholder="Ingresa referencia, nombre o compatibilidad..." autocomplete="off" />
       <button id="clear">Limpiar</button>
     </div>
     <div id="msgError" class="message error" style="display:none;"></div>
@@ -71,6 +71,8 @@
         document.getElementById('msgInfo').textContent='Error al cargar datos'; return;
       }
       document.getElementById('msgInfo').remove();
+      // Mostrar paneles vacíos hasta búsqueda
+      render([]);
     }
     function render(list){
       const pc=document.getElementById('panelConsumibles'), pi=document.getElementById('panelImpresoras');
