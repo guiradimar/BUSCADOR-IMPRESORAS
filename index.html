@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>BUSCADOR DE CONSUMIBLES E IMPRESORAS</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#f5f5f5;margin:0;padding:0;}
+    header{background:#fff;color:#000;padding:20px;text-align:center;box-shadow:0 2px 5px rgba(0,0,0,0.1)}
+    header h1{margin:0;text-transform:uppercase;font-size:2rem}
+    .search-container{display:flex;justify-content:center;align-items:center;margin:20px}
+    .search-container input{width:350px;padding:10px;border:1px solid #ccc;border-radius:4px 0 0 4px}
+    .search-container button{padding:10px;border:1px solid #ccc;background:#0F9D58;color:#fff;border-radius:0 4px 4px 0;cursor:pointer}
+    .error{color:red;text-align:center;margin-top:10px;min-height:1.2em;visibility:hidden}
+    .results{display:flex;justify-content:space-around;margin:20px}
+    .box{background:#fff;padding:10px;width:40%;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+    .box h2{text-transform:uppercase;margin:0 0 10px;font-size:1rem}
+    .box ul{list-style:none;padding:0;max-height:200px;overflow:auto}
+    .box li{padding:5px 0;border-bottom:1px solid #eee;text-transform:uppercase;font-size:0.9rem}
+    .google-btn{display:block;margin:10px auto 30px auto;padding:10px 20px;border:2px solid #000;background:#fff;color:#DB4437;border-radius:4px;cursor:pointer;font-weight:bold}
+  </style>
+</head>
+<body>
+  <header><h1>BUSCADOR DE CONSUMIBLES E IMPRESORAS</h1></header>
+  <div class="search-container">
+    <input id="searchInput" placeholder="Ej. TN2220, HP301, Canon TS3350" />
+    <button id="clearBtn">Limpiar</button>
+  </div>
+  <div class="error" id="errorMsg">&nbsp;</div>
+  <div class="results">
+    <div class="box"><h2>Consumibles</h2><ul id="consumiblesList"></ul></div>
+    <div class="box"><h2>Impresoras</h2><ul id="impresorasList"></ul></div>
+  </div>
+  <button class="google-btn" id="googleBtn">Buscar en Google</button>
+
+  <script>
+    let data = [];
+    fetch('consumibles_impresoras_full.json')
+      .then(r => r.json())
+      .then(j => { data = j; console.log('JSON cargado:', data.length); })
+      .catch(() => {
+        const e = document.getElementById('errorMsg');
+        e.textContent = 'Error cargando datos';
+        e.style.visibility = 'visible';
+      });
+
+    const inp = document.getElementById('searchInput');
+    const err = document.getElementById('errorMsg');
+    const consUL = document.getElementById('consumiblesList');
+    const impUL = document.getElementById('impresorasList');
+
+    document.getElementById('clearBtn').onclick = () => {
+      inp.value = '';
+      err.textContent = '';
+      err.style.visibility = 'hidden';
+      consUL.innerHTML = '';
+      impUL.innerHTML = '';
+      inp.focus();
+    };
+
+    document.getElementById('googleBtn').onclick = () => {
+      const q = inp.value.trim();
+      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
+    };
+
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); });
+
+    function normalize(s) { return String(s || '').toLowerCase().trim(); }
+
+    function handleSearch() {
+      const term = normalize(inp.value);
+      err.textContent = '';
+      err.style.visibility = 'hidden';
+      consUL.innerHTML = '';
+      impUL.innerHTML = '';
+      if (!term) return;
+
+      const seenC = new Set(), seenI = new Set();
+
+      // 1) Consumible/Referencia → muestra consumible y sus impresoras en COMPATIBILIDADES
+      data.forEach(item => {
+        if (normalize(item.REFERENCIA).includes(term) || normalize(item.CONSUMIBLES).includes(term)) {
+          if (!seenC.has(item.CONSUMIBLES)) {
+            seenC.add(item.CONSUMIBLES);
+            consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
+          }
+          item.COMPATIBILIDADES.forEach(c => {
+            if (!seenI.has(c)) {
+              seenI.add(c);
+              impUL.innerHTML += `<li>${c}</li>`;
+            }
+          });
+        }
+      });
+
+      // 2) Impresora/Compatibilidad → muestra impresora principal y consumibles compatibles
+      data.forEach(item => {
+        if (normalize(item.IMPRESORAS).includes(term) ||
+            item.COMPATIBILIDADES.some(c => normalize(c).includes(term))) {
+          if (!seenI.has(item.IMPRESORAS)) {
+            seenI.add(item.IMPRESORAS);
+            impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`;
+          }
+          if (!seenC.has(item.CONSUMIBLES)) {
+            seenC.add(item.CONSUMIBLES);
+            consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
+          }
+        }
+      });
+
+      if (seenC.size === 0 && seenI.size === 0) {
+        err.textContent = 'Código no encontrado: ' + inp.value;
+        err.style.visibility = 'visible';
+      }
+    }
+  </script>
+</body>
+</html>
