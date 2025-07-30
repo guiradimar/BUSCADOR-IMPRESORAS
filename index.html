@@ -7,35 +7,35 @@
   <style>
     :root { --gap:14px; --radius:12px; --shadow:0 4px 12px rgba(0,0,0,0.1); }
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#f3f4f6; color:#111; }
+    body { font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#f3f4f6; }
     header { background:#fff; padding:2rem 1rem; text-align:center; box-shadow:var(--shadow); }
-    header h1 { font-size:2.25rem; }
-    .searchbar { margin:1.5rem 0; display:flex; justify-content:center; gap:.5rem; }
+    header h1 { font-size:2.25rem; margin-bottom:1rem; }
+    .searchbar { display:flex; justify-content:center; gap:.5rem; }
     .searchbar input { width:280px; padding:.75rem 1rem; border:2px solid #ccc; border-radius:999px; outline:none; transition:.2s; }
     .searchbar input:focus { border-color:#4285f4; box-shadow:0 0 8px rgba(66,133,244,0.3); }
     .searchbar button { padding:.75rem 1.25rem; border:none; border-radius:999px; background:#4285f4; color:#fff; cursor:pointer; }
-    .message { text-align:center; margin-bottom:1rem; font-size:1rem; }
-    .message.error { color:#b91c1c; display:none; }
+    .message { text-align:center; margin:1rem 0; font-size:1rem; }
+    .message.error { color:#b91c1c; }
     main { max-width:1100px; margin:0 auto; padding:1rem; }
-    .grid { display:grid; gap:var(--gap); grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
-    .panel { background:#fff; border-radius:var(--radius); padding:1rem; box-shadow:var(--shadow); }
+    .grid { display:grid; gap:var(--gap); grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); margin-bottom: var(--gap); }
+    .panel { background:#fff; border-radius:var(--radius); padding:1rem; box-shadow:var(--shadow); min-height:120px; }
     .panel h2 { margin-bottom:.5rem; font-size:1.1rem; }
-    .panel ul { list-style:disc inside; }
+    .panel ul { list-style:disc inside; max-height:150px; overflow-y:auto; }
     .c-consumibles { border:2px solid #16a34a; }
     .c-impresoras { border:2px solid #dc2626; }
     .c-col-odd { border:2px solid #d97706; }
     .c-col-even { border:2px solid #2563eb; }
-    #btnGoogle { display:none; margin:1rem auto; padding:.75rem 1.5rem; border:none; border-radius:var(--radius); background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58); color:#fff; cursor:pointer; }
+    #btnGoogle { margin:0 auto; display:block; padding:.75rem 1.5rem; border:none; border-radius:var(--radius); background:linear-gradient(90deg,#4285f4,#db4437,#f4b400,#0f9d58); color:#fff; cursor:pointer; }
   </style>
 </head>
 <body>
   <header>
     <h1>BUSCADOR DE IMPRESORAS</h1>
     <div class="searchbar">
-      <input id="search" type="text" placeholder="Escribe referencia o nombre..." autofocus autocomplete="off" />
+      <input id="search" type="text" placeholder="Escribe referencia o nombre..." autocomplete="off" />
       <button id="clear">Limpiar</button>
     </div>
-    <div id="msgError" class="message error"></div>
+    <div id="msgError" class="message error" style="display:none;"></div>
   </header>
   <main>
     <div id="results">
@@ -49,87 +49,73 @@
           <ul id="panelImpresoras"></ul>
         </div>
       </div>
-      <div class="grid" id="extraPanels"></div>
-      <button id="btnGoogle">BUSCAR EN GOOGLE</button>
+      <div class="grid" id="extraPanels">
+        <div class="panel c-col-odd"><h2>MARCA</h2><ul id="panelMarca"></ul></div>
+        <div class="panel c-col-even"><h2>PRECIO</h2><ul id="panelPrecio"></ul></div>
+        <div class="panel c-col-odd"><h2>COLOR</h2><ul id="panelColor"></ul></div>
+        <div class="panel c-col-even"><h2>CAPACIDAD</h2><ul id="panelCapacidad"></ul></div>
+        <div class="panel c-col-odd"><h2>DESCRIPCIÓN</h2><ul id="panelDescripcion"></ul></div>
+      </div>
+      <button id="btnGoogle" style="display:none;">BUSCAR EN GOOGLE</button>
     </div>
   </main>
   <script>
-    const normalize = s => s ? s.toString().normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,'') : '';
-    let data = [], columns = [], consumCols = [], impresCols = [], otherCols = [];
-    // Cargar datos JSON
-    async function loadData() {
-      try {
-        const resp = await fetch('dataset_clean.json');
-        if (!resp.ok) throw new Error();
-        const js = await resp.json();
-        data = js.rows;
-        columns = js.columns;
-        // Consumibles: solo columna 'nombre' exacta
-        consumCols = columns.filter(c => normalize(c) === 'nombre');
-        impresCols = columns.filter(c => normalize(c).includes('compatibil'));
-        otherCols = columns.filter(c => !['nombre'].includes(normalize(c)) && !normalize(c).includes('compatibil'));
-      } catch (e) {
-        const err = document.getElementById('msgError');
-        err.textContent = 'Error cargando datos';
-        err.style.display = '';
+    const normalize = s => s?String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]/g,''):'';
+    let data=[], cols=[], consumCols=[], impresCols=[], otherCols=[];
+    async function loadData(){
+      try{
+        const res=await fetch('dataset_clean.json'); if(!res.ok) throw 0;
+        const js=await res.json(); data=js.rows; cols=js.columns;
+        consumCols = cols.filter(c=>normalize(c)==='nombre');
+        impresCols = cols.filter(c=>normalize(c).includes('compatibil'));
+        otherCols = cols.filter(c=>!['nombre'].includes(normalize(c)) && !normalize(c).includes('compatibil'));
+      }catch{
+        const e=document.getElementById('msgError'); e.textContent='Error cargando datos'; e.style.display='';
       }
     }
-    // Mostrar varios productos en paneles
-    function renderFiltered(list) {
-      // Consumibles: todos los nombres
-      const pc = document.getElementById('panelConsumibles'); pc.innerHTML = '';
-      list.forEach(r => {
-        consumCols.forEach(c => {
-          const v = r[c];
-          if (v != null) pc.appendChild(li(v));
-        });
+    function clearAll(){
+      document.getElementById('search').value='';
+      document.getElementById('msgError').style.display='none';
+      ['Consumibles','Impresoras','Marca','Precio','Color','Capacidad','Descripcion'].forEach(id=>{
+        const ul=document.getElementById('panel'+id); if(ul) ul.innerHTML='';
       });
-      // Impresoras: agrupar todas las compatibilidades
-      const pi = document.getElementById('panelImpresoras'); pi.innerHTML = '';
-      list.forEach(r => {
-        impresCols.forEach(c => {
-          const v = r[c];
-          if (v != null) {
-            v.split(',').forEach(code => pc && pi.appendChild(li(code.trim())));
-          }
-        });
-      });
-      // Extra campos para cada registro (solo descripción, capacidad, color, precio, marca)
-      const ext = document.getElementById('extraPanels'); ext.innerHTML = '';
-      const desired = ['marca','precio','color','capacidad','descripcion'];
-      desired.forEach((key,i) => {
-        const panel = document.createElement('div');
-        panel.className = 'panel ' + (i%2 ? 'c-col-even' : 'c-col-odd');
-        const h2 = document.createElement('h2'); h2.textContent = key.toUpperCase();
-        const ul = document.createElement('ul');
-        list.forEach(r => {
-          columns.forEach(col => {
-            if (normalize(col).includes(key) && r[col] != null) {
-              let v = r[col].toString();
-              if (key === 'descripcion') v = v.split('
-')[0];
+      document.getElementById('btnGoogle').style.display='none';
+    }
+    function renderFiltered(list){
+      // consumibles
+      const pc=document.getElementById('panelConsumibles'); pc.innerHTML='';
+      list.forEach(r=>consumCols.forEach(c=>r[c]&&pc.appendChild(li(r[c]))));
+      // impresoras
+      const pi=document.getElementById('panelImpresoras'); pi.innerHTML='';
+      list.forEach(r=>impresCols.forEach(c=>r[c]&&r[c].split(',').forEach(code=>pi.appendChild(li(code.trim())))));
+      // extras
+      const mapKeys={Marca:'marca',Precio:'precio',Color:'color',Capacidad:'capacidad',Descripcion:'descripcion'};
+      Object.entries(mapKeys).forEach(([panel,key],i)=>{
+        const ul=document.getElementById('panel'+panel); ul.innerHTML='';
+        list.forEach(r=>{
+          cols.forEach(c=>{
+            if(normalize(c).includes(key)&&r[c]!=null){
+              let v=r[c]; if(key==='descripcion') v=String(v).split('\n')[0];
               ul.appendChild(li(v));
             }
           });
         });
-        panel.append(h2,ul);
-        ext.append(panel);
       });
     }
-    function li(text) { const e = document.createElement('li'); e.textContent = text; return e; }(text) { const e = document.createElement('li'); e.textContent = text; return e; }
-    // Búsqueda al ENTER
-    
-    function onClear() {
-      document.getElementById('search').value = '';
-      document.getElementById('msgError').style.display = 'none';
-      document.getElementById('panelConsumibles').innerHTML = '';
-      document.getElementById('panelImpresoras').innerHTML = '';
-      document.getElementById('extraPanels').innerHTML = '';
-      document.getElementById('btnGoogle').style.display = 'none';
+    function li(t){const e=document.createElement('li');e.textContent=t;return e;}
+    function onSearch(e){ if(e.key!=='Enter') return; e.preventDefault();
+      const term=normalize(document.getElementById('search').value);
+      clearAll();
+      if(!term) return;
+      const filtered=data.filter(r=>consumCols.concat(impresCols).some(c=>normalize(r[c]).includes(term)));
+      const err=document.getElementById('msgError'), btn=document.getElementById('btnGoogle');
+      if(!filtered.length){ err.textContent=`CÓDIGO NO ENCONTRADO: ${document.getElementById('search').value}`; err.style.display='';
+        btn.style.display=''; btn.onclick=()=>window.open(`https://google.com/search?q=${encodeURIComponent(document.getElementById('search').value)}`,'_blank');
+      } else { renderFiltered(filtered); }
     }
-    document.getElementById('search').addEventListener('keydown', onKeyDown);
-    document.getElementById('clear').addEventListener('click', onClear);
-    window.addEventListener('load', loadData);
+    document.getElementById('search').addEventListener('keydown',onSearch);
+    document.getElementById('clear').addEventListener('click',clearAll);
+    window.addEventListener('load',loadData);
   </script>
 </body>
 </html>
