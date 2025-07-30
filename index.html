@@ -10,8 +10,8 @@
     body { font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#f3f4f6; }
     header { background:#fff; padding:2rem 1rem; text-align:center; box-shadow:var(--shadow); }
     header h1 { font-size:2.5rem; margin-bottom:1rem; }
-    .searchbar { display:flex; justify-content:center; gap:10px; }
-    .searchbar input { width:250px; padding:10px 15px; border:2px solid #ccc; border-radius:999px; outline:none; transition:0.2s; }
+    .searchbar { display:flex; justify-content:center; align-items:center; gap:10px; }
+    .searchbar input { width:280px; padding:10px 15px; border:2px solid #ccc; border-radius:999px; outline:none; transition:0.2s; }
     .searchbar input:focus { border-color:#4285f4; box-shadow:0 0 8px rgba(66,133,244,0.3); }
     .searchbar button { padding:10px 20px; border:none; border-radius:999px; background:#4285f4; color:#fff; cursor:pointer; }
     .message { text-align:center; margin:10px 0; font-size:1rem; }
@@ -29,7 +29,7 @@
   <header>
     <h1>BUSCADOR DE IMPRESORAS</h1>
     <div class="searchbar">
-      <input id="search" type="text" placeholder="Referencia, nombre o modelo" />
+      <input id="search" type="text" placeholder="Referencia, nombre o modelo" autocomplete="off" />
       <button id="clear">Limpiar</button>
     </div>
     <div id="msgError" class="message error" style="display:none"></div>
@@ -78,9 +78,7 @@
     function renderList(id, items) {
       const ul = document.getElementById(id);
       items.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = item;
-        ul.appendChild(li);
+        const li = document.createElement('li'); li.textContent = item; ul.appendChild(li);
       });
     }
 
@@ -92,48 +90,35 @@
       clearPanels();
       if (!term) return;
 
-      // Buscar filas donde el 'nombre' contenga el término
       const matched = data.filter(r =>
         (r[nombreCol] && normalize(r[nombreCol]).includes(term)) ||
-        (r[refCol] && normalize(r[refCol]).includes(term)) ||
-        (r[compatCol] && r[compatCol].split(',').some(c => normalize(c.trim()).includes(term)))
+        (r[refCol] && normalize(r[refCol]).includes(term))
       );
 
       if (matched.length === 0) {
         const err = document.getElementById('msgError');
         err.textContent = `CÓDIGO NO ENCONTRADO: ${raw}`;
         err.style.display = 'block';
-        const btn = document.getElementById('btnGoogle');
-        btn.style.display = 'block';
-        btn.onclick = () => window.open(`https://google.com/search?q=${encodeURIComponent(raw)}`, '_blank');
+        const btn = document.getElementById('btnGoogle'); btn.style.display = 'block';
+        btn.onclick = () => window.open(`https://google.com/search?q=${encodeURIComponent(raw)}`,'_blank');
         return;
       }
 
-      // Renderizar consumibles (nombres)
+      // Consumibles
       const consumibles = matched.map(r => r[nombreCol]).filter(Boolean);
       renderList('panelConsumibles', [...new Set(consumibles)]);
 
-      // Renderizar impresoras: extraer compatibilidades
+      // Impresoras
       const printers = new Set();
       matched.forEach(r => {
-        if (r[compatCol]) {
-          r[compatCol].split(',').forEach(code => {
-            const p = code.trim(); if (p) printers.add(p);
-          });
-        }
+        if (r[compatCol]) r[compatCol].split(',').forEach(c => {const p=c.trim(); if(p) printers.add(p)});
       });
       renderList('panelImpresoras', [...printers]);
     }
 
     document.getElementById('search').addEventListener('keydown', onSearch);
-    document.getElementById('clear').addEventListener('click', () => {
-      document.getElementById('search').value = '';
-      clearPanels();
-    });
-    window.addEventListener('load', () => {
-      loadData();
-      clearPanels();
-    });
+    document.getElementById('clear').addEventListener('click', () => { document.getElementById('search').value=''; clearPanels(); });
+    window.addEventListener('load', () => { loadData(); clearPanels(); });
   </script>
 </body>
 </html>
