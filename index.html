@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BUSCADOR DE IMPRESORAS</title>
+  <meta name="description" content="Buscador de consumibles e impresoras - búsqueda flexible y visual">
+  <style>
+    :root { --gap: 14px; --radius: 14px; --shadow: 0 8px 20px rgba(0,0,0,.06); }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #f6f7f9; color: #0b0c0c; }
+    header { text-align: center; padding: 30px 20px; background: #fff; box-shadow: var(--shadow); }
+    header h1 { margin: 0; font-size: 2.5rem; letter-spacing: 1px; }
+    .searchbar { margin: 20px auto; display: flex; justify-content: center; align-items: center; gap: 10px; }
+    .searchbar input[type="search"] {
+      width: 300px; padding: 10px 14px; border-radius: 999px; border: 2px solid #d1d5db; outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .searchbar input[type="search"].active {
+      border-color: #93c5fd; box-shadow: 0 0 8px rgba(147,197,253,0.8);
+    }
+    .searchbar button {
+      padding: 10px 16px; border: none; border-radius: 999px; background: #2563eb; color: #fff; cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+    .error { color: #b91c1c; font-weight: 600; margin-top: 10px; }
+    .meta { text-align: center; margin: 10px 0; color: #6b7280; }
+    main { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .grid { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .panel { background: #fff; border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); border: 1px solid #e5e7eb; }
+    .panel h2 { margin: 0 0 8px; font-size: 1.1rem; }
+    .panel ul { margin: 0; padding-left: 18px; max-height: 200px; overflow-y: auto; }
+    .c-consumibles { border-color: #bbf7d0; background: #eefdf5; }
+    .c-impresoras { border-color: #bfdbfe; background: #eef6ff; }
+    .c-col-odd { border-color: #fed7aa; background: #fff7ed; }
+    .c-col-even { border-color: #ddd6fe; background: #f5f3ff; }
+    .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: .9rem; }
+    .footer a { color: #2563eb; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>BUSCADOR DE IMPRESORAS</h1>
+    <div class="searchbar">
+      <input id="q" type="search" placeholder="Escribe referencia, nombre o compatibilidad…" />
+      <button id="clearBtn">Limpiar</button>
+    </div>
+    <div id="noFound" class="error" style="display:none;"></div>
+    <div id="count" class="meta">Cargando datos…</div>
+  </header>
+  <main>
+    <section class="grid" style="margin-bottom: var(--gap);">
+      <article class="panel c-consumibles">
+        <h2>CONSUMIBLES</h2>
+        <ul id="listConsumibles"></ul>
+      </article>
+      <article class="panel c-impresoras">
+        <h2>IMPRESORAS</h2>
+        <ul id="listImpresoras"></ul>
+      </article>
+    </section>
+    <section class="grid" id="columnsGrid"></section>
+    <p class="footer">Fuente: <code>data/dataset.json</code>. Si no hay resultados, pulsa <a id="webSearch" href="#" target="_blank">BUSCAR EN GOOGLE</a>.</p>
+  </main>
+  <script>
+    // Normalize string: lowercase, remove accents, remove non-alphanumeric
+    function normalizeStr(s) {
+      return String(s || '')
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+    }
+    const state = { rows: [], columns: [], consumCols: [], impresCols: [], otherCols: [] };
+    async function load() {
+      const res = await <code>data/dataset_clean.json</code>, { cache: 'no-store' });
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      state.rows = data.rows || [];
+      state.columns = data.columns || Object.keys(state.rows[0] || {});
+      // Assign groups by column name
+      state.columns.forEach(c => {
+        const key = normalizeStr(c);
+        if (key.includes('referenc') || key.includes('nombre')) state.consumCols.push(c);
+        else if (key.includes('compatibil')) state.impresCols.push(c);
+        else state.otherCols.push(c);
+      });
+      buildColumnsPanels(); render();
+    }
+    function buildColumnsPanels() {
+      const grid = document.getElementById('columnsGrid');
+      grid.innerHTML = '';
+      state.otherCols.forEach((c, i) => {
+        const art = document.createElement('article');
+        art.className = 'panel ' + (i % 2 === 0 ? 'c-col-even' : 'c-col-odd');
+        art.innerHTML = `<h2>${c}</h2><ul id="col-${i}"></ul>`;
+        grid.appendChild(art);
+      });
+    }
+    function search() {
+      const inp = document.getElementById('q');
+      const q = inp.value.trim();
+      const normQ = normalizeStr(q);
+      inp.classList.toggle('active', !!normQ);
+      const noFound = document.getElementById('noFound');
+      let results = state.rows.filter(r => {
+        if (!normQ) return true;
+        return state.columns.some(c => normalizeStr(r[c]).includes(normQ));
+      });
+      document.getElementById('count').textContent = `${results.length} coincidencia${results.length===1?'':'s'}`;
+      // Handle no results
+      if (normQ && results.length === 0) {
+        noFound.textContent = `CÓDIGO NO ENCONTRADO: ${q}`;
+        noFound.style.display = 'block';
+        document.getElementById('webSearch').href = `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+      } else {
+        noFound.style.display = 'none';
+      }
+      // Fill consumibles and impresoras
+      fillList('listConsumibles', results, state.consumCols);
+      fillList('listImpresoras', results, state.impresCols);
+      // Fill other columns
+      state.otherCols.forEach((c, i) => fillList(`col-${i}`, results, [c]));
+    }
+    function fillList(id, rows, cols) {
+      const ul = document.getElementById(id);
+      ul.innerHTML = '';
+      const set = new Set();
+      rows.forEach(r => cols.forEach(c => {
+        const v = r[c]; if (v!== null && v!==undefined) set.add(String(v));
+      }));
+      Array.from(set).slice(0, 200).forEach(v => {
+        const li = document.createElement('li'); li.textContent = v; ul.appendChild(li);
+      });
+    }
+    document.getElementById('q').addEventListener('input', search);
+    document.getElementById('clearBtn').addEventListener('click', () => { document.getElementById('q').value=''; search(); });
+    window.addEventListener('load', load);
+  </script>
+</body>
+</html>
