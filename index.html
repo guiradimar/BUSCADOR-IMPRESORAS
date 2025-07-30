@@ -87,57 +87,56 @@
     }
 
     function onSearch(e) {
-      if (e.key !== 'Enter') return;
-      e.preventDefault();
-      const termRaw = document.getElementById('search').value;
-      const term = normalize(termRaw);
-      if (!term) return clearPanels();
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const raw = document.getElementById('search').value;
+  const term = normalize(raw);
+  if (!term) return clearPanels();
 
-      // Encontrar consumibles por ref/nombre
-      const consumFilt = data.filter(r =>
-        (r[refCol] && normalize(r[refCol]).includes(term)) ||
-        (r[nombreCol] && normalize(r[nombreCol]).includes(term))
-      );
-      // Encontrar impresoras por compatibilidad (parcial)
-      const printerFilt = data.filter(r =>
-        r[compatCol] && r[compatCol].split(',').some(c => normalize(c.trim()).includes(term))
-      );
+  // Filtrar filas por cartucho (referencia o nombre) y por compatibilidad
+  const consumRows = data.filter(r =>
+    (r[refCol] && normalize(r[refCol]).includes(term)) ||
+    (r[nombreCol] && normalize(r[nombreCol]).includes(term))
+  );
+  const printerRows = data.filter(r =>
+    r[compatCol] && r[compatCol].split(',').some(c =>
+      normalize(c.trim()).includes(term)
+    )
+  );
 
-      if (!consumFilt.length && !printerFilt.length) {
-        clearPanels();
-        const err = document.getElementById('msgError'); err.textContent = `CÓDIGO NO ENCONTRADO: ${termRaw}`; err.style.display = 'block';
-        const btn = document.getElementById('btnGoogle'); btn.style.display = 'block';
-        btn.onclick = () => window.open(`https://google.com/search?q=${encodeURIComponent(termRaw)}`, '_blank');
-        return;
-      }
+  // Si nada coincide, mostrar error + botón Google
+  if (!consumRows.length && !printerRows.length) {
+    clearPanels();
+    const err = document.getElementById('msgError');
+    err.textContent = `CÓDIGO NO ENCONTRADO: ${raw}`;
+    err.style.display = 'block';
+    const btn = document.getElementById('btnGoogle');
+    btn.style.display = 'block';
+    btn.onclick = () => window.open(
+      `https://google.com/search?q=${encodeURIComponent(raw)}`, 
+      '_blank'
+    );
+    return;
+  }
 
-      clearPanels();
-      if (consumFilt.length) {
-        renderConsumibles(consumFilt);
-        // Si consumibles encontrados, mostrar en impresoras sus compatibilidades
-        const codes = new Set();
-        consumFilt.forEach(r => {
-          if (r[compatCol]) r[compatCol].split(',').forEach(c => codes.add(c.trim()));
-        });
-        renderImpresoras([...codes]);
-      }
-      if (printerFilt.length) {
-        // mostrar impresoras encontradas (término raw exacto)
-        const codes = new Set();
-        printerFilt.forEach(r => {
-          if (r[compatCol]) r[compatCol].split(',').forEach(c => codes.add(c.trim()));
-        });
-        renderImpresoras([...codes]);
-        // y mostrar consumibles asociados
-        renderConsumibles(printerFilt);
-      }
+  // Hay resultados: limpiar mensajes y paneles
+  clearPanels();
+
+  // Mostrar lista de consumibles si hay coincidencias
+  if (consumRows.length) {
+    renderConsumibles(consumRows);
+  }
+
+  // Unir todas las compatibilidades de ambas búsquedas
+  const codesSet = new Set();
+  [...consumRows, ...printerRows].forEach(r => {
+    if (r[compatCol]) {
+      r[compatCol].split(',').forEach(c => {
+        const cc = c.trim();
+        if (cc) codesSet.add(cc);
+      });
     }
+  });
 
-    function li(text) { const e = document.createElement('li'); e.textContent = text; return e; }
-
-    document.getElementById('search').addEventListener('keydown', onSearch);
-    document.getElementById('clear').addEventListener('click', () => { document.getElementById('search').value = ''; clearPanels(); });
-    window.addEventListener('load', () => { loadData(); clearPanels(); });
-  </script>
-</body>
-</html>
+  renderImpresoras([...codesSet]);
+}
