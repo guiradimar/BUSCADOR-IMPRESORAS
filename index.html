@@ -11,64 +11,51 @@
       --blue: #4285F4;
       --green: #34A853;
       --error: #DB4437;
+      --bg: #fff;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; background: #f5f5f5; }
     header { background: linear-gradient(90deg, var(--blue), var(--green)); padding: 2rem 1rem; text-align: center; box-shadow: var(--shadow); }
-    header h1 { color: #fff; text-transform: uppercase; font-size: 2.2rem; margin-bottom: 1rem; }
-    .search-container { display: flex; justify-content: center; margin-bottom: 1rem; }
+    header h1 { color: #fff; text-transform: uppercase; font-size: 2.4rem; }
+    .search-container { display: flex; justify-content: center; margin: 1rem 0; }
     .search-container input {
-      width: 350px; padding: 0.75rem 1rem; border: none;
+      width: 350px; padding: 0.75rem 1rem;
+      border: 1px solid #ccc;
       border-radius: var(--radius) 0 0 var(--radius);
       font-size: 1rem; box-shadow: var(--shadow);
-      transition: background 0.3s;
+      background: var(--bg);
     }
-    .search-container input:focus { outline: none; background: #e8f0fe; }
     .search-container button {
       background: var(--green); color: #fff; border: none;
       padding: 0.75rem 1rem;
       border-radius: 0 var(--radius) var(--radius) 0;
       cursor: pointer; box-shadow: var(--shadow);
     }
-    .error {
-      text-align: center; color: var(--error);
-      margin-bottom: 1rem; min-height: 1.2em;
-      visibility: hidden;
-    }
+    .error { text-align: center; color: var(--error); margin-bottom: 1rem; min-height: 1.2em; visibility: hidden; }
     .results {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 1rem;
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto 2rem;
     }
     .box {
-      background: #fff; padding: 1rem;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
+      background: var(--bg); padding: 1rem;
+      border-radius: var(--radius); box-shadow: var(--shadow);
       display: flex; flex-direction: column;
       max-height: 250px; overflow-y: auto;
     }
     .box h2 {
       margin-bottom: 0.5rem; font-size: 1.1rem;
-      text-transform: uppercase;
-      border-bottom: 2px solid #eee;
-      padding-bottom: 0.5rem;
+      text-transform: uppercase; border-bottom: 2px solid #eee; padding-bottom: 0.5rem;
     }
     .box ul { list-style: none; padding: 0; margin: 0; flex: 1; }
-    .box li {
-      padding: 0.5rem 0;
-      border-bottom: 1px solid #f0f0f0;
-      text-transform: uppercase;
-      font-size: 0.9rem;
-    }
+    .box li { padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
     .google-btn {
       display: block; margin: 0 auto 2rem;
-      padding: 0.75rem 2rem;
-      border: 2px solid #000;
-      background: #fff; color: var(--error);
-      font-weight: bold;
-      border-radius: var(--radius);
+      padding: 0.75rem 2rem; border: 2px solid #000;
+      background: var(--bg); color: var(--error);
+      font-weight: bold; border-radius: var(--radius);
       cursor: pointer; box-shadow: var(--shadow);
     }
   </style>
@@ -87,6 +74,7 @@
     <div class="box"><h2>Consumibles</h2><ul id="consumiblesList"></ul></div>
     <div class="box"><h2>Capacidades</h2><ul id="capacidadesList"></ul></div>
     <div class="box"><h2>Impresoras</h2><ul id="impresorasList"></ul></div>
+    <div class="box"><h2>Descripción</h2><ul id="descripcionList"></ul></div>
   </div>
 
   <button class="google-btn" id="googleBtn">Buscar en Google</button>
@@ -104,8 +92,7 @@
       })
       .catch(() => {
         const e = document.getElementById('errorMsg');
-        e.textContent = 'Error cargando datos';
-        e.style.visibility = 'visible';
+        e.textContent = 'Error cargando datos'; e.style.visibility = 'visible';
       });
 
     const inp = document.getElementById('searchInput');
@@ -113,88 +100,63 @@
     const consUL = document.getElementById('consumiblesList');
     const capUL = document.getElementById('capacidadesList');
     const impUL = document.getElementById('impresorasList');
+    const descUL = document.getElementById('descripcionList');
 
     document.getElementById('clearBtn').onclick = () => {
-      inp.value = '';
-      err.style.visibility = 'hidden';
-      consUL.innerHTML = '';
-      capUL.innerHTML = '';
-      impUL.innerHTML = '';
+      inp.value = ''; err.style.visibility = 'hidden';
+      consUL.innerHTML = ''; capUL.innerHTML = '';
+      impUL.innerHTML = ''; descUL.innerHTML = '';
       inp.focus();
     };
     document.getElementById('googleBtn').onclick = () => {
-      const q = inp.value.trim();
-      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
+      const q = inp.value.trim(); if (q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank');
     };
-    inp.addEventListener('input', () => {
-      const pct = Math.min(inp.value.length * 3, 100);
-      inp.style.background = `linear-gradient(90deg, var(--blue), var(--green) ${pct}%)`;
-    });
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); });
 
     function normalize(s) {
-      return String(s || '')
+      return String(s||'')
         .toLowerCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
         .replace(/\s+/g, '')
-        .replace(/[^a-z0-9]/g, '')
-        .trim();
+        .replace(/[^a-z0-9]/g, '');
     }
+
+    inp.addEventListener('keydown', e => { if (e.key==='Enter') handleSearch(); });
 
     function handleSearch() {
       const term = normalize(inp.value);
       err.style.visibility = 'hidden';
-      consUL.innerHTML = '';
-      capUL.innerHTML = '';
-      impUL.innerHTML = '';
+      consUL.innerHTML = ''; capUL.innerHTML = ''; impUL.innerHTML = ''; descUL.innerHTML = '';
       if (!term) return;
-
-      const seenC = new Set();
-      const seenI = new Set();
-
+      const seenC = new Set(), seenI = new Set(), seenD = new Set();
       data.forEach(item => {
-        const ref = normalize(item.REFERENCIA);
+        const refNorm = normalize(item.REFERENCIA);
         const consNorm = normalize(item.CONSUMIBLES);
-        const comps = (item.COMPATIBILIDADES || []).map(c => normalize(c));
-
-        // Buscar por referencia o consumible
-        if (ref.includes(term) || consNorm.includes(term)) {
-          if (!seenC.has(item.CONSUMIBLES)) {
-            seenC.add(item.CONSUMIBLES);
-            consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
-            capUL.innerHTML += `<li>${item[capKey] || 'Sin capacidad'}</li>`;
-          }
-          if (!seenI.has(item.IMPRESORAS)) {
-            seenI.add(item.IMPRESORAS);
-            impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`;
-          }
-          (item.COMPATIBILIDADES || []).forEach(c => {
-            if (c && !seenI.has(c)) {
-              seenI.add(c);
-              impUL.innerHTML += `<li>${c}</li>`;
-            }
+        const desc = item.DESCRIPCION || '';
+        const cap = item[capKey] || '';
+        const comps = (item.COMPATIBILIDADES||[]);
+        // match reference or consumibles
+        if (refNorm.includes(term) || consNorm.includes(term)) {
+          if (!seenC.has(item.CONSUMIBLES)) { seenC.add(item.CONSUMIBLES); consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`; }
+          if (cap && !seenD.has(cap)) { seenD.add(cap); capUL.innerHTML += `<li>${cap}</li>`; }
+          if (desc && !seenD.has(desc)) { seenD.add(desc); descUL.innerHTML += `<li>${desc}</li>`; }
+          if (!seenI.has(item.IMPRESORAS)) { seenI.add(item.IMPRESORAS); impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`; }
+          comps.forEach(cReal => {
+            if (cReal && !seenI.has(cReal)) { seenI.add(cReal); impUL.innerHTML += `<li>${cReal}</li>`; }
           });
         }
-
-        // Buscar por compatibilidades (códigos de impresora)
-        comps.forEach((cNorm, idx) => {
-          if (cNorm.includes(term)) {
-            const cReal = item.COMPATIBILIDADES[idx];
-            if (cReal && !seenI.has(cReal)) {
-              seenI.add(cReal);
-              impUL.innerHTML += `<li>${cReal}</li>`;
-            }
-            if (!seenC.has(item.CONSUMIBLES)) {
-              seenC.add(item.CONSUMIBLES);
-              consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
-              capUL.innerHTML += `<li>${item[capKey] || 'Sin capacidad'}</li>`;
-            }
+        // match compatibilidades
+        comps.forEach(cReal => {
+          if (normalize(cReal).includes(term)) {
+            if (!seenI.has(cReal)) { seenI.add(cReal); impUL.innerHTML += `<li>${cReal}</li>`; }
+            if (!seenC.has(item.CONSUMIBLES)) { seenC.add(item.CONSUMIBLES); consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`; }
+            if (cap && !seenD.has(cap)) { seenD.add(cap); capUL.innerHTML += `<li>${cap}</li>`; }
+            if (desc && !seenD.has(desc)) { seenD.add(desc); descUL.innerHTML += `<li>${desc}</li>`; }
           }
         });
       });
-
       if (seenC.size === 0 && seenI.size === 0) {
-        err.textContent = 'Código no encontrado: ' + inp.value;
+        err.textContent = `Código no encontrado: ${inp.value}`;
         err.style.visibility = 'visible';
       }
     }
