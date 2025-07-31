@@ -188,7 +188,9 @@
           if (!seenC.has(item.CONSUMIBLES)) {
             seenC.add(item.CONSUMIBLES);
             consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
-            const cap = item.CAPACIDAD != null ? String(item.CAPACIDAD) : 'sin capacidad';
+            const capRaw = item.CAPACIDAD ?? item.Capacidad ?? item.capacidad;
+            const cap = capRaw != null && capRaw !== '' ? String(capRaw) : 'sin capacidad';
+            capUL.innerHTML += `<li>${cap}</li>`;
             capUL.innerHTML += `<li>${cap}</li>`;
             descUL.innerHTML += `<li>${item.DESCRIPCION || 'sin descripción'}</li>`;
           }
