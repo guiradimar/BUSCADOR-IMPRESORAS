@@ -13,78 +13,67 @@
       --error: #DB4437;
       --bg-page: #f5f5f5;
       --bg-box: #fff;
-      --input-bg: #fff;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: Arial, sans-serif;
-      background: var(--bg-page);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-    }
+    body { font-family: Arial, sans-serif; background: var(--bg-page); }
     header {
-      width: 100%;
       background: linear-gradient(90deg, var(--blue), var(--green));
-      padding: 1rem 0;
+      padding: 1.5rem 1rem;
       text-align: center;
       box-shadow: var(--shadow);
     }
     header h1 {
+      margin: 0;
       color: #000;
       text-transform: uppercase;
       font-size: 2rem;
     }
     .search-container {
-      width: 100%;
       display: flex;
       justify-content: center;
       margin: 1rem 0;
     }
     .search-box {
       display: flex;
-      width: 400px;
+      width: 380px;
       box-shadow: var(--shadow);
       border-radius: var(--radius);
       overflow: hidden;
-      background: var(--input-bg);
-      transition: background 0.3s;
     }
     .search-box input {
       flex: 1;
       padding: 0.75rem 1rem;
-      border: none;
+      border: 1px solid #ccc;
+      border-right: none;
+      background: var(--bg-box);
       font-size: 1rem;
-      background: transparent;
     }
     .search-box input:focus {
       outline: none;
-    }
-    .search-box:hover input {
       background: #e8f0fe;
     }
     .search-box button {
       padding: 0 1rem;
-      border: none;
       background: var(--green);
       color: #fff;
+      border: 1px solid #ccc;
+      border-left: none;
       cursor: pointer;
       font-size: 1rem;
     }
     .error {
+      text-align: center;
       color: var(--error);
-      margin-bottom: 1rem;
+      min-height: 1.2em;
       visibility: hidden;
-      height: 1.2em;
+      margin-bottom: 1rem;
     }
     .results {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 1rem;
-      width: 90%;
       max-width: 1200px;
-      margin-bottom: 2rem;
+      margin: 0 auto 2rem;
     }
     .box {
       background: var(--bg-box);
@@ -106,6 +95,8 @@
     .box ul { list-style: none; padding: 0; margin: 0; }
     .box li { padding: 0.4rem 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
     .google-btn {
+      display: block;
+      margin: 1rem auto;
       padding: 0.75rem 2rem;
       border: 2px solid #000;
       background: var(--bg-box);
@@ -118,7 +109,9 @@
   </style>
 </head>
 <body>
-  <header><h1>BUSCADOR DE CONSUMIBLES E IMPRESORAS</h1></header>
+  <header>
+    <h1>BUSCADOR DE CONSUMIBLES E IMPRESORAS</h1>
+  </header>
   <div class="search-container">
     <div class="search-box">
       <input id="searchInput" placeholder="Ej. TN2220, HP301, Canon TS3350" />
@@ -140,11 +133,10 @@
       .then(j => data = j)
       .catch(() => {
         const e = document.getElementById('errorMsg');
-        e.textContent = 'Error cargando datos'; e.style.visibility = 'visible';
+        e.textContent = 'Error cargando datos';
+        e.style.visibility = 'visible';
       });
     const inp = document.getElementById('searchInput');
-    const clearBtn = document.getElementById('clearBtn');
-    const googleBtn = document.getElementById('googleBtn');
     const err = document.getElementById('errorMsg');
     const consUL = document.getElementById('consumiblesList');
     const capUL = document.getElementById('capacidadesList');
@@ -153,72 +145,62 @@
     clearBtn.onclick = () => {
       inp.value = '';
       err.style.visibility = 'hidden';
-      [consUL, capUL, impUL, descUL].forEach(u => u.innerHTML = '');
+      [consUL, capUL, impUL, descUL].forEach(ul => ul.innerHTML = '');
       inp.focus();
     };
     googleBtn.onclick = () => {
       const q = inp.value.trim();
-      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q));
+      if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q), '_blank');
     };
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); });
-    function normalize(s) {
-      return String(s || '')
+    inp.addEventListener('keydown', e => { if(e.key==='Enter') handleSearch(); });
+    function normalize(s){ return String(s||'')
         .toLowerCase()
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
-        .replace(/[^a-z0-9 ]+/g, ' ')
-        .trim();
-    }
-    function handleSearch() {
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/\s+/g,'')
+        .replace(/[^a-z0-9]/g,''); }
+    function handleSearch(){
       const term = normalize(inp.value);
-      err.style.visibility = 'hidden';
-      [consUL, capUL, impUL, descUL].forEach(u => u.innerHTML = '');
-      if (!term) return;
-      let found = false;
-      const seenC = new Set(), seenCap = new Set(), seenI = new Set(), seenD = new Set();
-      data.forEach(item => {
-        const ref = item.REFERENCIA || '';
-        const cons = item.CONSUMIBLES || '';
-        const cap = item.CAPACIDAD || '';
-        const desc = item.DESCRIPCION || '';
-        const imp = item.IMPRESORAS || '';
-        const compArr = String(item.COMPATIBILIDADES || '').split(/[;,]+/).map(s => s.trim()).filter(Boolean);
-        // aggregate fields
-        const fields = [ref, cons, cap, imp, desc, ...compArr];
-        if (fields.some(v => normalize(v).includes(term))) {
-          found = true;
-          // Consumibles
-          [cons, ref].forEach(v => {
-            if (v) {
-              const t = v.trim();
-              if (!seenC.has(t)) { seenC.add(t); consUL.innerHTML += `<li>${t}</li>`; }
+      err.style.visibility='hidden';
+      [consUL,capUL,impUL,descUL].forEach(ul=>ul.innerHTML='');
+      if(!term) return;
+      const seenC=new Set(),seenI=new Set(),seenCap=new Set(),seenD=new Set();
+      data.forEach(item=>{
+        const refNorm=normalize(item.REFERENCIA);
+        const consNorm=normalize(item.CONSUMIBLES);
+        const capVal=item.CAPACIDAD||'';
+        const descVal=item.DESCRIPCION||'';
+        const comps=Array.isArray(item.COMPATIBILIDADES)?item.COMPATIBILIDADES:[];
+        if(refNorm.includes(term)||consNorm.includes(term)){
+          if(consVal=item.CONSUMIBLES,!seenC.has(consVal)){seenC.add(consVal);consUL.innerHTML+=`<li>${consVal}</li>`;}
+          if(capVal&&!seenCap.has(capVal)){seenCap.add(capVal);capUL.innerHTML+=`<li>${capVal}</li>`;}
+          if(descVal&&!seenD.has(descVal)){seenD.add(descVal);descUL.innerHTML+=`<li>${descVal}</li>`;}
+          if(prn=item.IMPRESORAS,!seenI.has(prn)){seenI.add(prn);impUL.innerHTML+=`<li>${prn}</li>`;}
+          comps.forEach(c=>{
+          if (normalize(c).includes(term)) {
+            if (!seenI.has(c)) {
+              seenI.add(c);
+              impUL.innerHTML += `<li>${c}</li>`;
             }
-          });
-          // Capacidades
-          if (cap) {
-            const t = cap.trim();
-            if (!seenCap.has(t)) { seenCap.add(t); capUL.innerHTML += `<li>${t}</li>`; }
+            if (!seenC.has(item.CONSUMIBLES)) {
+              seenC.add(item.CONSUMIBLES);
+              consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
+            }
+            if (capVal && !seenCap.has(capVal)) {
+              seenCap.add(capVal);
+              capUL.innerHTML += `<li>${capVal}</li>`;
+            }
+            // descripción omitida aquí para no repetir modelos
           }
-          // Impresoras: compatibilidades completas
-          [imp, ...compArr].forEach(v => {
-            if (v) {
-              const t = v.trim();
-              if (!seenI.has(t)) { seenI.add(t); impUL.innerHTML += `<li>${t}</li>`; }
-            }
-          });
-          // Descripción: only essential (exclude listing compatiblidades)
-          if ((normalize(ref).includes(term) || normalize(cons).includes(term)) && desc) {
-            if (!seenD.has(desc)) {
-              seenD.add(desc);
-              descUL.innerHTML += `<li>${desc}</li>`;
-            }
-          }
+        });
         }
+        comps.forEach(c=>{if(normalize(c).includes(term)){
+            if(!seenI.has(c)){seenI.add(c);impUL.innerHTML+=`<li>${c}</li>`;}
+            if(consVal=item.CONSUMIBLES,!seenC.has(consVal)){seenC.add(consVal);consUL.innerHTML+=`<li>${consVal}</li>`;}
+            if(capVal&&!seenCap.has(capVal)){seenCap.add(capVal);capUL.innerHTML+=`<li>${capVal}</li>`;}
+            if(descVal&&!seenD.has(descVal)){seenD.add(descVal);descUL.innerHTML+=`<li>${descVal}</li>`;}
+        }});
       });
-      if (!found) {
-        err.textContent = `Código no encontrado: ${inp.value}`;
-        err.style.visibility = 'visible';
-      }
+      if(!seenC.size&&!seenI.size){err.textContent=`Código no encontrado: ${inp.value}`;err.style.visibility='visible';}
     }
   </script>
 </body>
