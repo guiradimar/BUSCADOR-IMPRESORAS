@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BUSCADOR DE CONSUMIBLES E IMPRESORAS</title>
   <style>
-    :root { --radius: 10px; --shadow: 0 4px 12px rgba(0,0,0,0.1); --blue: #4285F4; --green: #34A853; }
+    :root { --radius: 10px; --shadow: 0 4px 12px rgba(0,0,0,0.1); --blue: #4285F4; --green: #34A853; --error: #DB4437; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; background: #f5f5f5; }
     header { background: linear-gradient(90deg, var(--blue), var(--green)); padding: 2rem 1rem; text-align: center; box-shadow: var(--shadow); }
@@ -14,13 +14,13 @@
     .search-container input { width: 350px; padding: 0.75rem 1rem; border: none; background: #fff; border-radius: var(--radius) 0 0 var(--radius); font-size: 1rem; box-shadow: var(--shadow); transition: background .3s; }
     .search-container input:focus { outline: none; background: #e8f0fe; }
     .search-container button { background: var(--green); color: #fff; border: none; padding: 0.75rem 1rem; border-radius: 0 var(--radius) var(--radius) 0; cursor: pointer; box-shadow: var(--shadow); }
-    .error { text-align: center; color: #DB4437; margin-bottom: 1rem; min-height: 1.2em; visibility: hidden; }
+    .error { text-align: center; color: var(--error); margin-bottom: 1rem; min-height: 1.2em; visibility: hidden; }
     .results { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; max-width: 1200px; margin: 0 auto 2rem; }
     .box { background: #fff; padding: 1rem; border-radius: var(--radius); box-shadow: var(--shadow); display: flex; flex-direction: column; max-height: 250px; overflow-y: auto; }
     .box h2 { margin-bottom: 0.5rem; font-size: 1.1rem; text-transform: uppercase; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
     .box ul { list-style: none; padding: 0; margin: 0; flex: 1; }
     .box li { padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0; text-transform: uppercase; font-size: 0.9rem; }
-    .google-btn { display: block; margin: 0 auto 2rem; padding: 0.75rem 2rem; border: 2px solid #000; background: #fff; color: #DB4437; font-weight: bold; border-radius: var(--radius); cursor: pointer; box-shadow: var(--shadow); }
+    .google-btn { display: block; margin: 0 auto 2rem; padding: 0.75rem 2rem; border: 2px solid #000; background: #fff; color: var(--error); font-weight: bold; border-radius: var(--radius); cursor: pointer; box-shadow: var(--shadow); }
   </style>
 </head>
 <body>
@@ -41,10 +41,18 @@
   <button class="google-btn" id="googleBtn">Buscar en Google</button>
 
   <script>
-    let data = [];
+    let data = [], capKey, descKey;
     fetch('consumibles_impresoras_full.json')
       .then(r => r.json())
-      .then(j => { data = j; })
+      .then(j => {
+        data = j;
+        // detect keys case-insensitively
+        if (data.length) {
+          const keys = Object.keys(data[0]);
+          capKey = keys.find(k => k.toLowerCase() === 'capacidad');
+          descKey = keys.find(k => k.toLowerCase() === 'descripcion' || k.toLowerCase()==='descripción');
+        }
+      })
       .catch(() => { const e = document.getElementById('errorMsg'); e.textContent = 'Error cargando datos'; e.style.visibility = 'visible'; });
 
     const inp = document.getElementById('searchInput');
@@ -52,7 +60,7 @@
     const consUL = document.getElementById('consumiblesList');
     const capUL = document.getElementById('capacidadesList');
     const impUL = document.getElementById('impresorasList');
-    const descUL = document.getElementById('descripcionList');
+    
 
     document.getElementById('clearBtn').onclick = () => {
       inp.value = '';
@@ -60,7 +68,7 @@
       consUL.innerHTML = '';
       capUL.innerHTML = '';
       impUL.innerHTML = '';
-      descUL.innerHTML = '';
+      
       inp.focus();
     };
     document.getElementById('googleBtn').onclick = () => {
@@ -71,9 +79,9 @@
     function normalize(s) {
       return String(s||'')
         .toLowerCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g,'')
-        .replace(/\s+/g,'')
-        .replace(/[^a-z0-9]/g,'')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/\s+/g, '')
+        .replace(/[^a-z0-9]/g, '')
         .trim();
     }
 
@@ -100,15 +108,13 @@
           if (!seenC.has(item.CONSUMIBLES)) {
             seenC.add(item.CONSUMIBLES);
             consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
-            capUL.innerHTML += `<li>${item.CAPACIDAD||'Sin capacidad'}</li>`;
-            descUL.innerHTML += `<li>${item.DESCRIPCION||'Sin descripción'}</li>`;
+            capUL.innerHTML += `<li>${item[capKey]||'Sin capacidad'}</li>`;
+            descUL.innerHTML += `<li>${item[descKey]||'Sin descripción'}</li>`;
           }
-          // printers from column
           if (!seenI.has(item.IMPRESORAS)) {
             seenI.add(item.IMPRESORAS);
             impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`;
           }
-          // compatibles printers
           compRaw.forEach(c => {
             if (c && !seenI.has(c)) {
               seenI.add(c);
@@ -120,17 +126,15 @@
         comps.forEach((cNorm, idx) => {
           if (cNorm.includes(term)) {
             const cReal = compRaw[idx];
-            // add printer
             if (!seenI.has(cReal)) {
               seenI.add(cReal);
               impUL.innerHTML += `<li>${cReal}</li>`;
             }
-            // find consumibles for this printer
             if (!seenC.has(item.CONSUMIBLES)) {
               seenC.add(item.CONSUMIBLES);
               consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
-              capUL.innerHTML += `<li>${item.CAPACIDAD||'Sin capacidad'}</li>`;
-              descUL.innerHTML += `<li>${item.DESCRIPCION||'Sin descripción'}</li>`;
+              capUL.innerHTML += `<li>${item[capKey]||'Sin capacidad'}</li>`;
+              descUL.innerHTML += `<li>${item[descKey]||'Sin descripción'}</li>`;
             }
           }
         });
