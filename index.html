@@ -76,10 +76,11 @@
       color: var(--error);
       margin-bottom: 1rem;
       visibility: hidden;
+      height: 1.2em;
     }
     .results {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
       width: 90%;
       max-width: 1200px;
@@ -152,55 +153,72 @@
     clearBtn.onclick = () => {
       inp.value = '';
       err.style.visibility = 'hidden';
-      [consUL, capUL, impUL, descUL].forEach(u=>u.innerHTML='');
+      [consUL, capUL, impUL, descUL].forEach(u => u.innerHTML = '');
       inp.focus();
     };
     googleBtn.onclick = () => {
       const q = inp.value.trim();
-      if(q) window.open('https://www.google.com/search?q='+encodeURIComponent(q));
+      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q));
     };
-    inp.addEventListener('keydown', e => { if(e.key==='Enter') handleSearch(); });
-    function normalize(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]+/g,' ').trim(); }
-    function handleSearch(){
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); });
+    function normalize(s) {
+      return String(s || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9 ]+/g, ' ')
+        .trim();
+    }
+    function handleSearch() {
       const term = normalize(inp.value);
       err.style.visibility = 'hidden';
-      [consUL, capUL, impUL, descUL].forEach(u=>u.innerHTML='');
-      if(!term) return;
-      let found=false;
-      const seenC=new Set(), seenCap=new Set(), seenI=new Set(), seenD=new Set();
-      data.forEach(item=>{
+      [consUL, capUL, impUL, descUL].forEach(u => u.innerHTML = '');
+      if (!term) return;
+      let found = false;
+      const seenC = new Set(), seenCap = new Set(), seenI = new Set(), seenD = new Set();
+      data.forEach(item => {
         const ref = item.REFERENCIA || '';
         const cons = item.CONSUMIBLES || '';
         const cap = item.CAPACIDAD || '';
         const desc = item.DESCRIPCION || '';
         const imp = item.IMPRESORAS || '';
-        const compArr = String(item.COMPATIBILIDADES||'').split(/[;,]+/);
+        const compArr = String(item.COMPATIBILIDADES || '').split(/[;,]+/).map(s => s.trim()).filter(Boolean);
+        // aggregate fields
         const fields = [ref, cons, cap, imp, desc, ...compArr];
-        const match = fields.some(v=> normalize(v).includes(term));
-        if(match){
-          found=true;
-          // Consumibles & referencias
-          [cons, ref].forEach(v=>{
-            const txt = v.trim();
-            if(txt && !seenC.has(txt)){ seenC.add(txt); consUL.innerHTML+=`<li>${txt}</li>`; }
+        if (fields.some(v => normalize(v).includes(term))) {
+          found = true;
+          // Consumibles
+          [cons, ref].forEach(v => {
+            if (v) {
+              const t = v.trim();
+              if (!seenC.has(t)) { seenC.add(t); consUL.innerHTML += `<li>${t}</li>`; }
+            }
           });
           // Capacidades
-          if(cap && !seenCap.has(cap)){ seenCap.add(cap); capUL.innerHTML+=`<li>${cap}</li>`; }
-          // Impresoras = compatibilidades + campo IMPRESORAS
-          [imp, ...compArr].forEach(v=>{
-            const txt=v.trim();
-            if(txt && !seenI.has(txt)){ seenI.add(txt); impUL.innerHTML+=`<li>${txt}</li>`; }
+          if (cap) {
+            const t = cap.trim();
+            if (!seenCap.has(t)) { seenCap.add(t); capUL.innerHTML += `<li>${t}</li>`; }
+          }
+          // Impresoras: compatibilidades completas
+          [imp, ...compArr].forEach(v => {
+            if (v) {
+              const t = v.trim();
+              if (!seenI.has(t)) { seenI.add(t); impUL.innerHTML += `<li>${t}</li>`; }
+            }
           });
-          // Descripción only for ref/cons match
-          if(normalize(ref).includes(term) || normalize(cons).includes(term)){
-            if(desc && !seenD.has(desc)){
+          // Descripción: only essential (exclude listing compatiblidades)
+          if ((normalize(ref).includes(term) || normalize(cons).includes(term)) && desc) {
+            if (!seenD.has(desc)) {
               seenD.add(desc);
-              descUL.innerHTML+=`<li>${desc}</li>`;
+              descUL.innerHTML += `<li>${desc}</li>`;
             }
           }
         }
       });
-      if(!found){ err.textContent=`Código no encontrado: ${inp.value}`; err.style.visibility='visible'; }
+      if (!found) {
+        err.textContent = `Código no encontrado: ${inp.value}`;
+        err.style.visibility = 'visible';
+      }
     }
   </script>
 </body>
