@@ -60,21 +60,21 @@
       visibility: hidden;
     }
     .results {
-      display: flex;
-      justify-content: center;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
       gap: 1rem;
-      max-width: 1000px;
+      max-width: 1200px;
       margin: 0 auto 2rem;
     }
     .box {
       background: #fff;
-      flex: 1;
       padding: 1rem;
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      min-height: 200px;
       display: flex;
       flex-direction: column;
+      max-height: 250px;
+      overflow-y: auto;
     }
     .box h2 {
       margin-bottom: 0.5rem;
@@ -87,7 +87,6 @@
       list-style: none;
       padding: 0;
       margin: 0;
-      overflow-y: auto;
       flex: 1;
     }
     .box li {
@@ -123,6 +122,7 @@
     <div class="box"><h2>Consumibles</h2><ul id="consumiblesList"></ul></div>
     <div class="box"><h2>Capacidades</h2><ul id="capacidadesList"></ul></div>
     <div class="box"><h2>Impresoras</h2><ul id="impresorasList"></ul></div>
+    <div class="box"><h2>Descripción</h2><ul id="descripcionList"></ul></div>
   </div>
   <button class="google-btn" id="googleBtn">Buscar en Google</button>
 
@@ -142,6 +142,7 @@
     const consUL = document.getElementById('consumiblesList');
     const capUL = document.getElementById('capacidadesList');
     const impUL = document.getElementById('impresorasList');
+    const descUL = document.getElementById('descripcionList');
 
     document.getElementById('clearBtn').onclick = () => {
       inp.value = '';
@@ -149,6 +150,7 @@
       consUL.innerHTML = '';
       capUL.innerHTML = '';
       impUL.innerHTML = '';
+      descUL.innerHTML = '';
       inp.focus();
     };
     document.getElementById('googleBtn').onclick = () => {
@@ -171,25 +173,31 @@
       consUL.innerHTML = '';
       capUL.innerHTML = '';
       impUL.innerHTML = '';
+      descUL.innerHTML = '';
       if (!term) return;
 
-      const seenC = new Set(), seenCap = new Set(), seenI = new Set();
+      const seenC = new Set();
+      const seenI = new Set();
+
       data.forEach(item => {
         const ref = normalize(item.REFERENCIA);
         const cons = normalize(item.CONSUMIBLES);
         const comps = item.COMPATIBILIDADES.map(c=>normalize(c));
         if (ref.includes(term) || cons.includes(term) || comps.some(c=>c.includes(term))) {
+          // Consumible + capacidad + descripción
           if (!seenC.has(item.CONSUMIBLES)) {
             seenC.add(item.CONSUMIBLES);
             consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
             const cap = item.CAPACIDAD != null ? String(item.CAPACIDAD) : 'sin capacidad';
             capUL.innerHTML += `<li>${cap}</li>`;
+            descUL.innerHTML += `<li>${item.DESCRIPCION || 'sin descripción'}</li>`;
           }
+          // Impresoras
           if (!seenI.has(item.IMPRESORAS)) {
             seenI.add(item.IMPRESORAS);
             impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`;
           }
-          item.COMPATIBILIDADES.forEach(c=>{
+          item.COMPATIBILIDADES.forEach(c => {
             if (!seenI.has(c)) {
               seenI.add(c);
               impUL.innerHTML += `<li>${c}</li>`;
@@ -197,8 +205,8 @@
           });
         }
       });
-      if (seenC.size===0 && seenI.size===0) {
-        err.textContent = 'Código no encontrado: '+inp.value;
+      if (seenC.size === 0 && seenI.size === 0) {
+        err.textContent = 'Código no encontrado: ' + inp.value;
         err.style.visibility = 'visible';
       }
     }
