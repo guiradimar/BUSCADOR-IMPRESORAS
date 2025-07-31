@@ -191,7 +191,7 @@
             const capRaw = item.CAPACIDAD ?? item.Capacidad ?? item.capacidad;
             const cap = capRaw != null && capRaw !== '' ? String(capRaw) : 'sin capacidad';
             capUL.innerHTML += `<li>${cap}</li>`;
-            capUL.innerHTML += `<li>${cap}</li>`;
+            descUL.innerHTML += `<li>${item.DESCRIPCION || 'sin descripción'}</li>`; += `<li>${cap}</li>`;
             descUL.innerHTML += `<li>${item.DESCRIPCION || 'sin descripción'}</li>`;
           }
           // Impresoras
