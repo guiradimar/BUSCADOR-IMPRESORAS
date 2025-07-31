@@ -44,7 +44,7 @@
     let data = [];
     fetch('consumibles_impresoras_full.json')
       .then(r => r.json())
-      .then(j => { data = j; console.log('🔥 Primer registro JSON:', data[0]); })
+      .then(j => { data = j; })
       .catch(() => { const e = document.getElementById('errorMsg'); e.textContent = 'Error cargando datos'; e.style.visibility = 'visible'; });
 
     const inp = document.getElementById('searchInput');
@@ -71,12 +71,14 @@
     function normalize(s) {
       return String(s||'')
         .toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .normalize('NFD').replace(/[̀-ͯ]/g,'')
+        .replace(/\s+/g,'')
+        .replace(/[^a-z0-9]/g,'')
         .trim();
     }
 
     function handleSearch() {
-      const term = normalize(inp.value).replace(/\s+/g,'');
+      const term = normalize(inp.value);
       err.style.visibility = 'hidden';
       consUL.innerHTML = '';
       capUL.innerHTML = '';
@@ -88,33 +90,52 @@
       const seenI = new Set();
 
       data.forEach(item => {
-        const ref = normalize(item.REFERENCIA).replace(/\s+/g,'');
-        const cons = normalize(item.CONSUMIBLES);
-        const compRaw = item.COMPATIBILIDADES || '';
-        const comps = normalize(compRaw).split(/[,;]+/);
+        const ref = normalize(item.REFERENCIA);
+        const consNorm = normalize(item.CONSUMIBLES);
+        const compRaw = Array.isArray(item.COMPATIBILIDADES) ? item.COMPATIBILIDADES : [];
+        const comps = compRaw.map(c => normalize(c));
 
-        if (ref.includes(term) || cons.includes(term) || comps.some(c=>c.includes(term))) {
+        // match reference or consumable
+        if (ref.includes(term) || consNorm.includes(term)) {
           if (!seenC.has(item.CONSUMIBLES)) {
             seenC.add(item.CONSUMIBLES);
             consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
-            const cap = item.CAPACIDAD ? item.CAPACIDAD : 'Sin capacidad';
-            capUL.innerHTML += `<li>${cap}</li>`;
-            const desc = item.DESCRIPCION ? item.DESCRIPCION : 'Sin descripción';
-            descUL.innerHTML += `<li>${desc}</li>`;
+            capUL.innerHTML += `<li>${item.CAPACIDAD||'Sin capacidad'}</li>`;
+            descUL.innerHTML += `<li>${item.DESCRIPCION||'Sin descripción'}</li>`;
           }
-          // impresoras desde columna y compatibilidades
+          // printers from column
           if (!seenI.has(item.IMPRESORAS)) {
             seenI.add(item.IMPRESORAS);
             impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`;
           }
-          comps.forEach(c => {
+          // compatibles printers
+          compRaw.forEach(c => {
             if (c && !seenI.has(c)) {
               seenI.add(c);
-              impUL.innerHTML += `<li>${c.toUpperCase()}</li>`;
+              impUL.innerHTML += `<li>${c}</li>`;
             }
           });
         }
+        // match compatibilities for printer search
+        comps.forEach((cNorm, idx) => {
+          if (cNorm.includes(term)) {
+            const cReal = compRaw[idx];
+            // add printer
+            if (!seenI.has(cReal)) {
+              seenI.add(cReal);
+              impUL.innerHTML += `<li>${cReal}</li>`;
+            }
+            // find consumibles for this printer
+            if (!seenC.has(item.CONSUMIBLES)) {
+              seenC.add(item.CONSUMIBLES);
+              consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
+              capUL.innerHTML += `<li>${item.CAPACIDAD||'Sin capacidad'}</li>`;
+              descUL.innerHTML += `<li>${item.DESCRIPCION||'Sin descripción'}</li>`;
+            }
+          }
+        });
       });
+
       if (seenC.size===0 && seenI.size===0) {
         err.textContent = 'Código no encontrado: ' + inp.value;
         err.style.visibility = 'visible';
