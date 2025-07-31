@@ -170,10 +170,7 @@
     function handleSearch() {
       const term = normalize(inp.value);
       err.style.visibility = 'hidden';
-      consUL.innerHTML = '';
-      capUL.innerHTML = '';
-      impUL.innerHTML = '';
-      descUL.innerHTML = '';
+      consUL.innerHTML = ''; capUL.innerHTML = ''; impUL.innerHTML = ''; descUL.innerHTML = '';
       if (!term) return;
 
       const seenC = new Set();
@@ -182,24 +179,23 @@
       data.forEach(item => {
         const ref = normalize(item.REFERENCIA);
         const cons = normalize(item.CONSUMIBLES);
-        const comps = item.COMPATIBILIDADES.map(c=>normalize(c));
+        const comps = (item.COMPATIBILIDADES||[]).map(c=>normalize(c));
         if (ref.includes(term) || cons.includes(term) || comps.some(c=>c.includes(term))) {
-          // Consumible + capacidad + descripción
           if (!seenC.has(item.CONSUMIBLES)) {
             seenC.add(item.CONSUMIBLES);
             consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
-            const capRaw = item.CAPACIDAD ?? item.Capacidad ?? item.capacidad;
+            const capRaw = item.CAPACIDAD;
             const cap = capRaw != null && capRaw !== '' ? String(capRaw) : 'sin capacidad';
             capUL.innerHTML += `<li>${cap}</li>`;
-            descUL.innerHTML += `<li>${item.DESCRIPCION || 'sin descripción'}</li>`; += `<li>${cap}</li>`;
-            descUL.innerHTML += `<li>${item.DESCRIPCION || 'sin descripción'}</li>`;
+            const descRaw = item.DESCRIPCION;
+            const desc = descRaw && descRaw.trim() ? descRaw : 'sin descripción';
+            descUL.innerHTML += `<li>${desc}</li>`;
           }
-          // Impresoras
           if (!seenI.has(item.IMPRESORAS)) {
             seenI.add(item.IMPRESORAS);
             impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`;
           }
-          item.COMPATIBILIDADES.forEach(c => {
+          (item.COMPATIBILIDADES||[]).forEach(c => {
             if (!seenI.has(c)) {
               seenI.add(c);
               impUL.innerHTML += `<li>${c}</li>`;
