@@ -5,108 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BUSCADOR DE CONSUMIBLES E IMPRESORAS</title>
   <style>
-    :root {
-      --radius: 10px;
-      --shadow: 0 4px 12px rgba(0,0,0,0.1);
-      --blue: #4285F4;
-      --green: #34A853;
-    }
+    :root { --radius: 10px; --shadow: 0 4px 12px rgba(0,0,0,0.1); --blue: #4285F4; --green: #34A853; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; background: #f5f5f5; }
-    header {
-      background: linear-gradient(90deg, var(--blue), var(--green));
-      padding: 2rem 1rem;
-      text-align: center;
-      box-shadow: var(--shadow);
-    }
-    header h1 {
-      color: #fff;
-      text-transform: uppercase;
-      font-size: 2.2rem;
-      margin-bottom: 1rem;
-    }
-    .search-container {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 1rem;
-    }
-    .search-container input {
-      width: 350px;
-      padding: 0.75rem 1rem;
-      border: none;
-      background: #fff;
-      border-radius: var(--radius) 0 0 var(--radius);
-      font-size: 1rem;
-      box-shadow: var(--shadow);
-    }
-    .search-container input:focus {
-      outline: none;
-      background: #e8f0fe;
-    }
-    .search-container button {
-      background: var(--green);
-      color: #fff;
-      border: none;
-      padding: 0.75rem 1rem;
-      border-radius: 0 var(--radius) var(--radius) 0;
-      cursor: pointer;
-      box-shadow: var(--shadow);
-    }
-    .error {
-      text-align: center;
-      color: #DB4437;
-      margin-bottom: 1rem;
-      min-height: 1.2em;
-      visibility: hidden;
-    }
-    .results {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1rem;
-      max-width: 1200px;
-      margin: 0 auto 2rem;
-    }
-    .box {
-      background: #fff;
-      padding: 1rem;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      display: flex;
-      flex-direction: column;
-      max-height: 250px;
-      overflow-y: auto;
-    }
-    .box h2 {
-      margin-bottom: 0.5rem;
-      font-size: 1.1rem;
-      text-transform: uppercase;
-      border-bottom: 2px solid #eee;
-      padding-bottom: 0.5rem;
-    }
-    .box ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      flex: 1;
-    }
-    .box li {
-      padding: 0.5rem 0;
-      border-bottom: 1px solid #f0f0f0;
-      text-transform: uppercase;
-      font-size: 0.9rem;
-    }
-    .google-btn {
-      display: block;
-      margin: 0 auto 2rem;
-      padding: 0.75rem 2rem;
-      border: 2px solid #000;
-      background: #fff;
-      color: #DB4437;
-      font-weight: bold;
-      border-radius: var(--radius);
-      cursor: pointer;
-      box-shadow: var(--shadow);
-    }
+    header { background: linear-gradient(90deg, var(--blue), var(--green)); padding: 2rem 1rem; text-align: center; box-shadow: var(--shadow); }
+    header h1 { color: #fff; text-transform: uppercase; font-size: 2.2rem; margin-bottom: 1rem; }
+    .search-container { display: flex; justify-content: center; margin-bottom: 1rem; }
+    .search-container input { width: 350px; padding: 0.75rem 1rem; border: none; background: #fff; border-radius: var(--radius) 0 0 var(--radius); font-size: 1rem; box-shadow: var(--shadow); transition: background .3s; }
+    .search-container input:focus { outline: none; background: #e8f0fe; }
+    .search-container button { background: var(--green); color: #fff; border: none; padding: 0.75rem 1rem; border-radius: 0 var(--radius) var(--radius) 0; cursor: pointer; box-shadow: var(--shadow); }
+    .error { text-align: center; color: #DB4437; margin-bottom: 1rem; min-height: 1.2em; visibility: hidden; }
+    .results { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; max-width: 1200px; margin: 0 auto 2rem; }
+    .box { background: #fff; padding: 1rem; border-radius: var(--radius); box-shadow: var(--shadow); display: flex; flex-direction: column; max-height: 250px; overflow-y: auto; }
+    .box h2 { margin-bottom: 0.5rem; font-size: 1.1rem; text-transform: uppercase; border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+    .box ul { list-style: none; padding: 0; margin: 0; flex: 1; }
+    .box li { padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0; text-transform: uppercase; font-size: 0.9rem; }
+    .google-btn { display: block; margin: 0 auto 2rem; padding: 0.75rem 2rem; border: 2px solid #000; background: #fff; color: #DB4437; font-weight: bold; border-radius: var(--radius); cursor: pointer; box-shadow: var(--shadow); }
   </style>
 </head>
 <body>
@@ -130,15 +44,8 @@
     let data = [];
     fetch('consumibles_impresoras_full.json')
       .then(r => r.json())
-      .then(j => {
-        data = j;
-        console.log('🔥 Primer registro JSON:', data[0]);
-      })
-      .catch(() => {
-        const e = document.getElementById('errorMsg');
-        e.textContent = 'Error cargando datos';
-        e.style.visibility = 'visible';
-      });
+      .then(j => { data = j; console.log('🔥 Primer registro JSON:', data[0]); })
+      .catch(() => { const e = document.getElementById('errorMsg'); e.textContent = 'Error cargando datos'; e.style.visibility = 'visible'; });
 
     const inp = document.getElementById('searchInput');
     const err = document.getElementById('errorMsg');
@@ -157,21 +64,19 @@
       inp.focus();
     };
     document.getElementById('googleBtn').onclick = () => {
-      const q = inp.value.trim();
-      if (q) window.open('https://www.google.com/search?q='+encodeURIComponent(q), '_blank');
+      const q = inp.value.trim(); if (q) window.open('https://www.google.com/search?q='+encodeURIComponent(q), '_blank');
     };
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); });
 
     function normalize(s) {
       return String(s||'')
         .toLowerCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g,'')
-        .replace(/[^a-z0-9]/g,'')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
         .trim();
     }
 
     function handleSearch() {
-      const term = normalize(inp.value);
+      const term = normalize(inp.value).replace(/\s+/g,'');
       err.style.visibility = 'hidden';
       consUL.innerHTML = '';
       capUL.innerHTML = '';
@@ -183,34 +88,34 @@
       const seenI = new Set();
 
       data.forEach(item => {
-        console.log('🔍 Buscando', term, '→ CAPACIDAD raw:', item.CAPACIDAD, '→ DESCRIPCION raw:', item.DESCRIPCION);
-        const ref = normalize(item.REFERENCIA);
+        const ref = normalize(item.REFERENCIA).replace(/\s+/g,'');
         const cons = normalize(item.CONSUMIBLES);
-        const comps = (item.COMPATIBILIDADES||[]).map(c=>normalize(c));
+        const compRaw = item.COMPATIBILIDADES || '';
+        const comps = normalize(compRaw).split(/[,;]+/);
+
         if (ref.includes(term) || cons.includes(term) || comps.some(c=>c.includes(term))) {
           if (!seenC.has(item.CONSUMIBLES)) {
             seenC.add(item.CONSUMIBLES);
             consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
-            const capRaw = item.CAPACIDAD;
-            const cap = capRaw != null && capRaw !== '' ? String(capRaw) : 'sin capacidad';
+            const cap = item.CAPACIDAD ? item.CAPACIDAD : 'Sin capacidad';
             capUL.innerHTML += `<li>${cap}</li>`;
-            const descRaw = item.DESCRIPCION;
-            const desc = descRaw && descRaw.trim() ? descRaw : 'sin descripción';
+            const desc = item.DESCRIPCION ? item.DESCRIPCION : 'Sin descripción';
             descUL.innerHTML += `<li>${desc}</li>`;
           }
+          // impresoras desde columna y compatibilidades
           if (!seenI.has(item.IMPRESORAS)) {
             seenI.add(item.IMPRESORAS);
             impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`;
           }
-          (item.COMPATIBILIDADES||[]).forEach(c => {
-            if (!seenI.has(c)) {
+          comps.forEach(c => {
+            if (c && !seenI.has(c)) {
               seenI.add(c);
-              impUL.innerHTML += `<li>${c}</li>`;
+              impUL.innerHTML += `<li>${c.toUpperCase()}</li>`;
             }
           });
         }
       });
-      if (seenC.size === 0 && seenI.size === 0) {
+      if (seenC.size===0 && seenI.size===0) {
         err.textContent = 'Código no encontrado: ' + inp.value;
         err.style.visibility = 'visible';
       }
