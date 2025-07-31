@@ -171,11 +171,28 @@
         const descVal=item.DESCRIPCION||'';
         const comps=Array.isArray(item.COMPATIBILIDADES)?item.COMPATIBILIDADES:[];
         if(refNorm.includes(term)||consNorm.includes(term)){
-          if(consVal=item.CONSUMIBLES,!seenC.has(consVal)){seenC.add(consVal);consUL.innerHTML+=`<li>${consVal}</li>`;}
-          if(capVal&&!seenCap.has(capVal)){seenCap.add(capVal);capUL.innerHTML+=`<li>${capVal}</li>`;}
-          if(descVal&&!seenD.has(descVal)){seenD.add(descVal);descUL.innerHTML+=`<li>${descVal}</li>`;}
-          if(prn=item.IMPRESORAS,!seenI.has(prn)){seenI.add(prn);impUL.innerHTML+=`<li>${prn}</li>`;}
+          // push consumible
+          if(item.CONSUMIBLES && !seenC.has(item.CONSUMIBLES)){
+            seenC.add(item.CONSUMIBLES);
+            consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`;
+          }
+          // push capacidad
+          if(capVal && !seenCap.has(capVal)){
+            seenCap.add(capVal);
+            capUL.innerHTML += `<li>${capVal}</li>`;
+          }
+          // push descripción
+          if(descVal && !seenD.has(descVal)){
+            seenD.add(descVal);
+            descUL.innerHTML += `<li>${descVal}</li>`;
+          }
+          // push compatibilidades (impresoras)
           comps.forEach(c=>{
+            if(!seenI.has(c)){
+              seenI.add(c);
+              impUL.innerHTML += `<li>${c}</li>`;
+            }
+          });
           if (normalize(c).includes(term)) {
             if (!seenI.has(c)) {
               seenI.add(c);
