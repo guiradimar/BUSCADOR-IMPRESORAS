@@ -12,51 +12,105 @@
       --green: #34A853;
       --error: #DB4437;
       --bg: #fff;
+      --input-bg: #fff;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; background: #f5f5f5; }
-    header { background: linear-gradient(90deg, var(--blue), var(--green)); padding: 2rem 1rem; text-align: center; box-shadow: var(--shadow); }
-    header h1 { color: #fff; text-transform: uppercase; font-size: 2.4rem; }
-    .search-container { display: flex; justify-content: center; margin: 1rem 0; }
-    .search-container input {
-      width: 350px; padding: 0.75rem 1rem;
-      border: 1px solid #ccc;
-      border-radius: var(--radius) 0 0 var(--radius);
-      font-size: 1rem; box-shadow: var(--shadow);
-      background: var(--bg);
+    header {
+      background: linear-gradient(90deg, var(--blue), var(--green));
+      padding: 2rem 1rem;
+      box-shadow: var(--shadow);
     }
-    .search-container button {
-      background: var(--green); color: #fff; border: none;
+    header h1 {
+      color: #000;
+      text-transform: uppercase;
+      font-size: 2.4rem;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .search-container {
+      display: flex;
+      justify-content: center;
+    }
+    .search-box {
+      background: var(--input-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      overflow: hidden;
+      width: 400px;
+    }
+    .search-box input {
+      flex: 1;
       padding: 0.75rem 1rem;
-      border-radius: 0 var(--radius) var(--radius) 0;
-      cursor: pointer; box-shadow: var(--shadow);
+      border: none;
+      font-size: 1rem;
+      background: var(--input-bg);
     }
-    .error { text-align: center; color: var(--error); margin-bottom: 1rem; min-height: 1.2em; visibility: hidden; }
+    .search-box input:focus {
+      outline: none;
+    }
+    .search-box button {
+      background: var(--green);
+      color: #fff;
+      border: none;
+      padding: 0 1rem;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .error {
+      text-align: center;
+      color: var(--error);
+      margin-top: 0.5rem;
+      min-height: 1.2em;
+      visibility: hidden;
+    }
     .results {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 1rem;
       max-width: 1400px;
-      margin: 0 auto 2rem;
+      margin: 2rem auto;
     }
     .box {
-      background: var(--bg); padding: 1rem;
-      border-radius: var(--radius); box-shadow: var(--shadow);
-      display: flex; flex-direction: column;
-      max-height: 250px; overflow-y: auto;
+      background: var(--bg);
+      padding: 1rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      max-height: 250px;
+      overflow-y: auto;
     }
     .box h2 {
-      margin-bottom: 0.5rem; font-size: 1.1rem;
-      text-transform: uppercase; border-bottom: 2px solid #eee; padding-bottom: 0.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 0.5rem;
     }
-    .box ul { list-style: none; padding: 0; margin: 0; flex: 1; }
-    .box li { padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+    .box ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      flex: 1;
+    }
+    .box li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.9rem;
+    }
     .google-btn {
-      display: block; margin: 0 auto 2rem;
-      padding: 0.75rem 2rem; border: 2px solid #000;
-      background: var(--bg); color: var(--error);
-      font-weight: bold; border-radius: var(--radius);
-      cursor: pointer; box-shadow: var(--shadow);
+      display: block;
+      margin: 0 auto 2rem;
+      padding: 0.75rem 2rem;
+      border: 2px solid #000;
+      background: var(--bg);
+      color: var(--error);
+      font-weight: bold;
+      border-radius: var(--radius);
+      cursor: pointer;
+      box-shadow: var(--shadow);
     }
   </style>
 </head>
@@ -64,8 +118,10 @@
   <header>
     <h1>BUSCADOR DE CONSUMIBLES E IMPRESORAS</h1>
     <div class="search-container">
-      <input id="searchInput" placeholder="Ej. TN2220, HP301, Canon TS3350" />
-      <button id="clearBtn">Limpiar</button>
+      <div class="search-box">
+        <input id="searchInput" placeholder="Ej. TN2220, HP301, Canon TS3350" />
+        <button id="clearBtn">Limpiar</button>
+      </div>
     </div>
     <div class="error" id="errorMsg"></div>
   </header>
@@ -86,8 +142,7 @@
       .then(j => {
         data = j;
         if (data.length) {
-          const keys = Object.keys(data[0]);
-          capKey = keys.find(k => k.toLowerCase() === 'capacidad');
+          capKey = Object.keys(data[0]).find(k => k.toLowerCase() === 'capacidad');
         }
       })
       .catch(() => {
@@ -103,13 +158,15 @@
     const descUL = document.getElementById('descripcionList');
 
     document.getElementById('clearBtn').onclick = () => {
-      inp.value = ''; err.style.visibility = 'hidden';
-      consUL.innerHTML = ''; capUL.innerHTML = '';
-      impUL.innerHTML = ''; descUL.innerHTML = '';
+      inp.value = '';
+      err.style.visibility = 'hidden';
+      [consUL, capUL, impUL, descUL].forEach(ul => ul.innerHTML = '');
       inp.focus();
     };
+
     document.getElementById('googleBtn').onclick = () => {
-      const q = inp.value.trim(); if (q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank');
+      const q = inp.value.trim();
+      if (q) window.open('https://www.google.com/search?q='+encodeURIComponent(q), '_blank');
     };
 
     function normalize(s) {
@@ -121,40 +178,42 @@
         .replace(/[^a-z0-9]/g, '');
     }
 
-    inp.addEventListener('keydown', e => { if (e.key==='Enter') handleSearch(); });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); });
 
     function handleSearch() {
       const term = normalize(inp.value);
       err.style.visibility = 'hidden';
-      consUL.innerHTML = ''; capUL.innerHTML = ''; impUL.innerHTML = ''; descUL.innerHTML = '';
+      [consUL, capUL, impUL, descUL].forEach(ul => ul.innerHTML = '');
       if (!term) return;
-      const seenC = new Set(), seenI = new Set(), seenD = new Set();
+      const seenC = new Set(), seenI = new Set(), seenCap = new Set(), seenDesc = new Set();
+
       data.forEach(item => {
-        const refNorm = normalize(item.REFERENCIA);
-        const consNorm = normalize(item.CONSUMIBLES);
+        const normRef = normalize(item.REFERENCIA);
+        const normCons = normalize(item.CONSUMIBLES);
         const desc = item.DESCRIPCION || '';
         const cap = item[capKey] || '';
-        const comps = (item.COMPATIBILIDADES||[]);
-        // match reference or consumibles
-        if (refNorm.includes(term) || consNorm.includes(term)) {
+        const comps = item.COMPATIBILIDADES || [];
+
+        // Match in referencia or consumibles
+        if (normRef.includes(term) || normCons.includes(term)) {
           if (!seenC.has(item.CONSUMIBLES)) { seenC.add(item.CONSUMIBLES); consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`; }
-          if (cap && !seenD.has(cap)) { seenD.add(cap); capUL.innerHTML += `<li>${cap}</li>`; }
-          if (desc && !seenD.has(desc)) { seenD.add(desc); descUL.innerHTML += `<li>${desc}</li>`; }
+          if (cap && !seenCap.has(cap)) { seenCap.add(cap); capUL.innerHTML += `<li>${cap}</li>`; }
+          if (desc && !seenDesc.has(desc)) { seenDesc.add(desc); descUL.innerHTML += `<li>${desc}</li>`; }
           if (!seenI.has(item.IMPRESORAS)) { seenI.add(item.IMPRESORAS); impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`; }
-          comps.forEach(cReal => {
-            if (cReal && !seenI.has(cReal)) { seenI.add(cReal); impUL.innerHTML += `<li>${cReal}</li>`; }
-          });
+          comps.forEach(c => { if (c && !seenI.has(c)) { seenI.add(c); impUL.innerHTML += `<li>${c}</li>`; } });
         }
-        // match compatibilidades
-        comps.forEach(cReal => {
-          if (normalize(cReal).includes(term)) {
-            if (!seenI.has(cReal)) { seenI.add(cReal); impUL.innerHTML += `<li>${cReal}</li>`; }
+
+        // Match in compatibilidades
+        comps.forEach(c => {
+          if (normalize(c).includes(term)) {
+            if (!seenI.has(c)) { seenI.add(c); impUL.innerHTML += `<li>${c}</li>`; }
             if (!seenC.has(item.CONSUMIBLES)) { seenC.add(item.CONSUMIBLES); consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`; }
-            if (cap && !seenD.has(cap)) { seenD.add(cap); capUL.innerHTML += `<li>${cap}</li>`; }
-            if (desc && !seenD.has(desc)) { seenD.add(desc); descUL.innerHTML += `<li>${desc}</li>`; }
+            if (cap && !seenCap.has(cap)) { seenCap.add(cap); capUL.innerHTML += `<li>${cap}</li>`; }
+            if (desc && !seenDesc.has(desc)) { seenDesc.add(desc); descUL.innerHTML += `<li>${desc}</li>`; }
           }
         });
       });
+
       if (seenC.size === 0 && seenI.size === 0) {
         err.textContent = `Código no encontrado: ${inp.value}`;
         err.style.visibility = 'visible';
