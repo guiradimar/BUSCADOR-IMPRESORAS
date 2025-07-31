@@ -130,7 +130,10 @@
     let data = [];
     fetch('consumibles_impresoras_full.json')
       .then(r => r.json())
-      .then(j => data = j)
+      .then(j => {
+        data = j;
+        console.log('🔥 Primer registro JSON:', data[0]);
+      })
       .catch(() => {
         const e = document.getElementById('errorMsg');
         e.textContent = 'Error cargando datos';
@@ -162,21 +165,25 @@
     function normalize(s) {
       return String(s||'')
         .toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-        .replace(/\s+/g,'')
+        .normalize('NFD').replace(/[̀-ͯ]/g,'')
+        .replace(/[^a-z0-9]/g,'')
         .trim();
     }
 
     function handleSearch() {
       const term = normalize(inp.value);
       err.style.visibility = 'hidden';
-      consUL.innerHTML = ''; capUL.innerHTML = ''; impUL.innerHTML = ''; descUL.innerHTML = '';
+      consUL.innerHTML = '';
+      capUL.innerHTML = '';
+      impUL.innerHTML = '';
+      descUL.innerHTML = '';
       if (!term) return;
 
       const seenC = new Set();
       const seenI = new Set();
 
       data.forEach(item => {
+        console.log('🔍 Buscando', term, '→ CAPACIDAD raw:', item.CAPACIDAD, '→ DESCRIPCION raw:', item.DESCRIPCION);
         const ref = normalize(item.REFERENCIA);
         const cons = normalize(item.CONSUMIBLES);
         const comps = (item.COMPATIBILIDADES||[]).map(c=>normalize(c));
