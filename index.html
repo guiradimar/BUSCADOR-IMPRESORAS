@@ -11,21 +11,21 @@
       --blue: #4285F4;
       --green: #34A853;
       --error: #DB4437;
-      --bg: #fff;
-      --input-bg: #fff;
+      --bg-light: #fff;
+      --bg-page: #f5f5f5;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; background: #f5f5f5; }
+    body { font-family: Arial, sans-serif; background: var(--bg-page); }
     header {
       background: linear-gradient(90deg, var(--blue), var(--green));
       padding: 2rem 1rem;
       box-shadow: var(--shadow);
+      text-align: center;
     }
     header h1 {
       color: #000;
       text-transform: uppercase;
-      font-size: 2.4rem;
-      text-align: center;
+      font-size: 2.5rem;
       margin-bottom: 1rem;
     }
     .search-container {
@@ -33,30 +33,34 @@
       justify-content: center;
     }
     .search-box {
-      background: var(--input-bg);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      display: flex;
-      overflow: hidden;
+      position: relative;
       width: 400px;
     }
     .search-box input {
-      flex: 1;
+      width: 100%;
       padding: 0.75rem 1rem;
-      border: none;
+      border: 2px solid #ccc;
+      border-radius: var(--radius);
       font-size: 1rem;
-      background: var(--input-bg);
+      background: var(--bg-light);
+      transition: background 0.3s;
     }
     .search-box input:focus {
       outline: none;
+      background: #e3f2fd;
     }
     .search-box button {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
       background: var(--green);
       color: #fff;
       border: none;
       padding: 0 1rem;
+      border-top-right-radius: var(--radius);
+      border-bottom-right-radius: var(--radius);
       cursor: pointer;
-      font-size: 1rem;
     }
     .error {
       text-align: center;
@@ -69,43 +73,36 @@
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 1rem;
-      max-width: 1400px;
+      max-width: 1200px;
       margin: 2rem auto;
     }
     .box {
-      background: var(--bg);
+      background: var(--bg-light);
       padding: 1rem;
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      display: flex;
-      flex-direction: column;
       max-height: 250px;
       overflow-y: auto;
     }
     .box h2 {
-      margin-bottom: 0.5rem;
       font-size: 1.1rem;
+      margin-bottom: 0.5rem;
       text-transform: uppercase;
       border-bottom: 2px solid #eee;
       padding-bottom: 0.5rem;
     }
-    .box ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      flex: 1;
-    }
+    .box ul { list-style: none; padding: 0; margin: 0; }
     .box li {
-      padding: 0.5rem 0;
-      border-bottom: 1px solid #f0f0f0;
       font-size: 0.9rem;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid #f0f0f0;
     }
     .google-btn {
       display: block;
-      margin: 0 auto 2rem;
+      margin: 1rem auto 2rem;
       padding: 0.75rem 2rem;
       border: 2px solid #000;
-      background: var(--bg);
+      background: var(--bg-light);
       color: var(--error);
       font-weight: bold;
       border-radius: var(--radius);
@@ -136,18 +133,14 @@
   <button class="google-btn" id="googleBtn">Buscar en Google</button>
 
   <script>
-    let data = [], capKey;
+    let data = [];
     fetch('consumibles_impresoras_full.json')
       .then(r => r.json())
-      .then(j => {
-        data = j;
-        if (data.length) {
-          capKey = Object.keys(data[0]).find(k => k.toLowerCase() === 'capacidad');
-        }
-      })
+      .then(json => data = json)
       .catch(() => {
         const e = document.getElementById('errorMsg');
-        e.textContent = 'Error cargando datos'; e.style.visibility = 'visible';
+        e.textContent = 'Error cargando datos';
+        e.style.visibility = 'visible';
       });
 
     const inp = document.getElementById('searchInput');
@@ -166,7 +159,7 @@
 
     document.getElementById('googleBtn').onclick = () => {
       const q = inp.value.trim();
-      if (q) window.open('https://www.google.com/search?q='+encodeURIComponent(q), '_blank');
+      if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
     };
 
     function normalize(s) {
@@ -178,43 +171,44 @@
         .replace(/[^a-z0-9]/g, '');
     }
 
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleSearch(); });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
 
-    function handleSearch() {
+    function search() {
       const term = normalize(inp.value);
       err.style.visibility = 'hidden';
       [consUL, capUL, impUL, descUL].forEach(ul => ul.innerHTML = '');
       if (!term) return;
-      const seenC = new Set(), seenI = new Set(), seenCap = new Set(), seenDesc = new Set();
+      const seen = { c: new Set(), cap: new Set(), i: new Set(), d: new Set() };
 
       data.forEach(item => {
-        const normRef = normalize(item.REFERENCIA);
-        const normCons = normalize(item.CONSUMIBLES);
+        const ref = normalize(item.REFERENCIA);
+        const cons = normalize(item.CONSUMIBLES);
+        const cap = item.CAPACIDAD || '';
         const desc = item.DESCRIPCION || '';
-        const cap = item[capKey] || '';
-        const comps = item.COMPATIBILIDADES || [];
+        const comps = Array.isArray(item.COMPATIBILIDADES) ? item.COMPATIBILIDADES : []; 
 
-        // Match in referencia or consumibles
-        if (normRef.includes(term) || normCons.includes(term)) {
-          if (!seenC.has(item.CONSUMIBLES)) { seenC.add(item.CONSUMIBLES); consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`; }
-          if (cap && !seenCap.has(cap)) { seenCap.add(cap); capUL.innerHTML += `<li>${cap}</li>`; }
-          if (desc && !seenDesc.has(desc)) { seenDesc.add(desc); descUL.innerHTML += `<li>${desc}</li>`; }
-          if (!seenI.has(item.IMPRESORAS)) { seenI.add(item.IMPRESORAS); impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`; }
-          comps.forEach(c => { if (c && !seenI.has(c)) { seenI.add(c); impUL.innerHTML += `<li>${c}</li>`; } });
+        // Match REF or CONSUMIBLES
+        if (ref.includes(term) || cons.includes(term)) {
+          if (!seen.c.has(item.CONSUMIBLES)) { seen.c.add(item.CONSUMIBLES); consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`; }
+          if (cap && !seen.cap.has(cap)) { seen.cap.add(cap); capUL.innerHTML += `<li>${cap}</li>`; }
+          if (desc && !seen.d.has(desc)) { seen.d.add(desc); descUL.innerHTML += `<li>${desc}</li>`; }
+          if (!seen.i.has(item.IMPRESORAS)) { seen.i.add(item.IMPRESORAS); impUL.innerHTML += `<li>${item.IMPRESORAS}</li>`; }
+          comps.forEach(c => {
+            if (!seen.i.has(c)) { seen.i.add(c); impUL.innerHTML += `<li>${c}</li>`; }
+          });
         }
-
-        // Match in compatibilidades
+        // Match COMPATIBILIDADES
         comps.forEach(c => {
           if (normalize(c).includes(term)) {
-            if (!seenI.has(c)) { seenI.add(c); impUL.innerHTML += `<li>${c}</li>`; }
-            if (!seenC.has(item.CONSUMIBLES)) { seenC.add(item.CONSUMIBLES); consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`; }
-            if (cap && !seenCap.has(cap)) { seenCap.add(cap); capUL.innerHTML += `<li>${cap}</li>`; }
-            if (desc && !seenDesc.has(desc)) { seenDesc.add(desc); descUL.innerHTML += `<li>${desc}</li>`; }
+            if (!seen.i.has(c)) { seen.i.add(c); impUL.innerHTML += `<li>${c}</li>`; }
+            if (!seen.c.has(item.CONSUMIBLES)) { seen.c.add(item.CONSUMIBLES); consUL.innerHTML += `<li>${item.CONSUMIBLES}</li>`; }
+            if (cap && !seen.cap.has(cap)) { seen.cap.add(cap); capUL.innerHTML += `<li>${cap}</li>`; }
+            if (desc && !seen.d.has(desc)) { seen.d.add(desc); descUL.innerHTML += `<li>${desc}</li>`; }
           }
         });
       });
 
-      if (seenC.size === 0 && seenI.size === 0) {
+      if (!seen.c.size && !seen.i.size) {
         err.textContent = `Código no encontrado: ${inp.value}`;
         err.style.visibility = 'visible';
       }
